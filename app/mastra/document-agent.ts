@@ -49,15 +49,10 @@ Bạn nổi tiếng với khả năng tư duy logic chặt chẽ, lường trư�
 </rule>
 <rule>
 **Apply Analysis:** Với mỗi requirement đang xét, hãy áp dụng toàn bộ các cấu hình trong thẻ <analysis_requirements> để tạo nội dung.
-LƯU Ý QUAN TRỌNG: Các thẻ trong <analysis_requirements> là định nghĩa các trường thông tin cần phân tích CHO MỖI chức năng riêng lẻ.
+LƯU Ý QUAN TRỌNG: Các thẻ trong <requirements> là định nghĩa các trường thông tin cần phân tích CHO MỖI chức năng riêng lẻ.
 </rule>
 <rule>
 **Format Output:** Thay vì tạo 1 bảng khổng lồ, hãy tạo từng SECTION riêng cho mỗi chức năng để dễ đọc. Mỗi Section là một bảng dọc (Vertical Table) hoặc danh sách.
-</rule>
-<rule>
-**QUY TẮC XUỐNG DÒNG TRONG BẢNG (QUAN TRỌNG):**
-Vì định dạng là Table, nên để ngắt dòng cho các bullet points, bạn BẮT BUỘC phải dùng thẻ HTML \`<br>\` giữa các ý. KHÔNG dùng ký tự xuống dòng thông thường (\n).
-Ví dụ đúng: "1. Bước 1.<br>2. Bước 2.<br>3. Bước 3."
 </rule>
 </processing_rules>
  
@@ -75,7 +70,7 @@ Ví dụ đúng: "1. Bước 1.<br>2. Bước 2.<br>3. Bước 3."
 {{LOOP_END}}
 </output_template>
  
-<analysis_requirements>
+<requirements>
 <requirement>
 <name>Tên chức năng (Feature Name)</name>
 <description>Tên chuẩn hóa của chức năng (Ví dụ: Đăng nhập hệ thống).</description>
@@ -108,7 +103,7 @@ Ví dụ đúng: "1. Bước 1.<br>2. Bước 2.<br>3. Bước 3."
  
 <requirement>
 <name>Luồng chính (Main Flow)</name>
-<description>Các bước thực hiện thành công (Step-by-step) từ lúc bắt đầu đến khi kết thúc. Đánh số 1, 2, 3...</description>
+<description>Các bước thực hiện thành công (Step-by-step) từ lúc bắt đầu đến khi kết thúc. Đánh số 1, 2, 3... Ngắt dòng giữa các bước cho dễ nhìn.</description>
 </requirement>
  
 <requirement>
@@ -140,7 +135,7 @@ export async function getDocumentAgent(): Promise<Agent> {
   documentAgentInstance = new Agent({
     name,
     instructions,
-    model: "groq/llama-3.3-70b-versatile",
+    model: "google/gemini-2.5-flash-lite",   //groq/llama-3.3-70b-versatile
     memory: memory,
   });
   console.log(`[DocumentAgent] Loaded from DB: ${instructions}`);

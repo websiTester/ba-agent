@@ -102,7 +102,8 @@ export async function getChunkAgent(): Promise<Agent> {
   chunkAgentInstance = new Agent({
     name,
     instructions,
-    model: "groq/llama-3.3-70b-versatile",
+    model: "google/gemini-2.5-flash-lite",
+
     memory: memory,
   });
   console.log(`[ChunkAgent] Loaded from DB: ${instructions}`);

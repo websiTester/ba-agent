@@ -27,13 +27,17 @@ import {
   Upload,
   Video,
   Music,
-  Download
+  Download,
+  CloudDownload
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Message, PhaseId } from '../types';
 import { parseJson } from '../utils/json-parser';
-
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
+import { marked } from 'marked';
+import { asBlob } from 'html-docx-js-typescript';
 // Interface cho Template (matching MongoDB schema)
 interface Pair {
   header: string;
@@ -237,6 +241,9 @@ export default function ChatPanel({
   //Record State
 const recordRef = useRef<HTMLInputElement>(null);
 
+  //Save Mode State
+  const [isSaveMode, setIsSaveMode] = useState(false);
+
   // Close options menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -253,31 +260,129 @@ const recordRef = useRef<HTMLInputElement>(null);
     };
   }, [isOptionsMenuOpen]);
 
+  const sanitizeName = (name: string) => name.replace(/[\/\\?%*:|"<>]/g, '-').trim();
+
+  const handleDownloadZip = async (content: string) => {
+    if (!content.trim()) return;
+    setIsAgentProcessing(true);
+
+    try {
+      const zip = new JSZip();
+      
+      // Regex cắt chuỗi: Cắt tại các dòng bắt đầu bằng #, ##, hoặc ###
+      const sections = content.split(/(?=^#{1,3} )/gm);
+
+      let currentH1Folder = null; // Folder cấp 1
+      let currentH2Folder = null; // Folder cấp 2
+      
+      // Mặc định lưu vào root nếu không có Header
+      let targetFolder = zip; 
+      let fileName = "General_Info";
+
+      for (const section of sections) {
+        const trimmedSection = section.trim();
+        if (!trimmedSection) continue;
+
+        // Lấy dòng đầu tiên để check header
+        const firstLine = trimmedSection.split('\n')[0];
+        
+        // --- LOGIC LINH HOẠT HƠN ---
+        
+        // 1. Gặp H1 (#) -> Luôn tạo Folder gốc mới
+        if (firstLine.startsWith('# ')) {
+          const name = sanitizeName(firstLine.substring(2));
+          currentH1Folder = zip.folder(name);
+          currentH2Folder = null; // Reset H2 khi sang H1 mới
+          
+          targetFolder = currentH1Folder || zip; // Nội dung của H1 nằm trong folder H1
+          fileName = name; 
+        } 
+        
+        // 2. Gặp H2 (##) -> Tạo Folder
+        else if (firstLine.startsWith('## ')) {
+          const name = sanitizeName(firstLine.substring(3));
+          
+          // Logic mới: Nếu đang ở trong H1 thì tạo sub-folder, nếu không thì tạo folder ở root
+          const parentFolder = currentH1Folder || zip; 
+          currentH2Folder = parentFolder.folder(name);
+          
+          targetFolder = currentH2Folder || zip; // Nội dung H2 nằm trong folder H2
+          fileName = name;
+        } 
+        
+        // 3. Gặp H3 (###) -> Xác định là FILE
+        else if (firstLine.startsWith('### ')) {
+          const name = sanitizeName(firstLine.substring(4));
+          
+          // File này nằm ở folder gần nhất (ưu tiên H2 -> H1 -> Root)
+          targetFolder = currentH2Folder || currentH1Folder || zip;
+          fileName = name;
+        }
+        
+        // 4. Nội dung không có Header (Text đầu file)
+        else {
+           // Giữ nguyên targetFolder và fileName cũ
+        }
+
+        // --- TẠO FILE DOCX ---
+        // 1. Parse Markdown -> HTML
+        const htmlContent = marked.parse(trimmedSection);
+
+        // 2. Wrap HTML với CSS cho đẹp
+        const htmlDoc = `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="UTF-8">
+              <style>
+                body { font-family: 'Times New Roman', serif; font-size: 12pt; line-height: 1.5; }
+                h1, h2, h3 { color: #2E74B5; }
+                table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+                td, th { border: 1px solid #000; padding: 8px; }
+                ul, ol { margin-left: 20px; }
+              </style>
+            </head>
+            <body>
+              ${htmlContent}
+            </body>
+          </html>
+        `;
+
+        // 3. Tạo Blob và lưu vào Zip
+        // Lưu ý: await asBlob có thể tốn thời gian, nhưng đảm bảo tuần tự
+        const docxBlob = await asBlob(htmlDoc);
+        
+        // Kiểm tra targetFolder có tồn tại không trước khi ghi
+        if (targetFolder) {
+            targetFolder.file(`${fileName}.docx`, docxBlob);
+        }
+      }
+
+      // Tải về
+      const contentBlob = await zip.generateAsync({ type: "blob" });
+      saveAs(contentBlob, "Requirements_Export.zip");
+
+    } catch (error) {
+      console.error("Lỗi:", error);
+      alert("Có lỗi: " + (error as Error).message);
+    } finally {
+      setIsAgentProcessing(false);
+    }
+  };
+
   // Download message as .docx file
   const handleDownload = async (messageContent: string) => {
     try {
-      const { Document, Packer, Paragraph } = await import('docx');
-      
-      // Tạo paragraphs trực tiếp từ các dòng content
-      const paragraphs = messageContent.split('\n').map(line => new Paragraph({ text: line }));
-      
-      const doc = new Document({
-        sections: [{ children: paragraphs }],
-      });
-      
-      const blob = await Packer.toBlob(doc);
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-      const fileName = `BA-Agent-${phaseName}-${timestamp}.docx`;
-      
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileName;
-      link.click();
-      URL.revokeObjectURL(url);
+      setIsAgentProcessing(true);
+      console.log('==========MESSAGE CONTENT==========\n'+ messageContent);
+  
+      await handleDownloadZip(messageContent);
     } catch (error) {
       console.error('Error downloading docx:', error);
       alert('❌ Không thể tạo file .docx. Vui lòng thử lại.');
+    }
+    finally {
+      setIsAgentProcessing(false);
     }
   };
 
@@ -756,6 +861,8 @@ ${result.content}`;
       } finally {
         setIsTyping(false);
       }
+    } else if(isSaveMode) {
+      let userMessage = input.trim() || 'Xử lý yêu cầu này.';
     }
     else {
       let userMessage = input.trim();
@@ -776,44 +883,7 @@ ${result.content}`;
         setIsTyping(false);
       }
     }
-    // Discovery phase - use Discovery Agent
-    // else if (phaseId === 'discovery') {
-    //   let userMessage = input.trim() || 'Phân tích tài liệu này và trích xuất Requirements List.';
-
-    //   if (attachedFile?.content) {
-    //     userMessage = `📎 **File: ${attachedFile.name}**\n\n${userMessage}`;
-    //   }
-    //   onSendMessage(userMessage, 'user');
-
-    //   setIsTyping(true);
-    //   try {
-    //     const aiResponse = await callDiscoveryAgent(userMessage, attachedFile?.content ?? "");
-    //     onSendMessage(aiResponse, 'assistant');
-    //   } catch (error) {
-    //     const errorMessage = error instanceof Error ? error.message : 'Đã xảy ra lỗi';
-    //     onSendMessage(`❌ **Lỗi:** ${errorMessage}\n\nVui lòng kiểm tra:\n1. API key đã được cấu hình trong file \`.env.local\`\n2. Kết nối internet\n3. Thử lại sau`, 'assistant');
-    //   } finally {
-    //     setIsTyping(false);
-    //   }
-    // }else if (phaseId === 'analysis') {
-    //   let userMessage = input.trim();
-
-    //   if (attachedFile?.content) {
-    //     userMessage = `📎 **File: ${attachedFile.name}**\n\n${userMessage}`;
-    //   }
-    //   onSendMessage(userMessage, 'user');
-
-    //   setIsTyping(true);
-    //   try {
-    //     const aiResponse = await callAnalysisAgent(userMessage, attachedFile?.content ?? "");
-    //     onSendMessage(aiResponse, 'assistant');
-    //   } catch (error) {
-    //     const errorMessage = error instanceof Error ? error.message : 'Đã xảy ra lỗi';
-    //     onSendMessage(`❌ **Lỗi:** ${errorMessage}\n\nVui lòng kiểm tra:\n1. API key đã được cấu hình trong file \`.env.local\`\n2. Kết nối internet\n3. Thử lại sau`, 'assistant');
-    //   } finally {
-    //     setIsTyping(false);
-    //   }
-    // } 
+    
      
     
     setAttachedFile(null);
@@ -2144,7 +2214,7 @@ ${result.content}`;
 
                         {/* Menu Items */}
                         <div className="py-2">
-                          {/* Obsidian Agent Toggle */}
+                          {/* Save File Toggle */}
                           <div className="px-4 py-3 hover:bg-[#f9fafb] transition-colors">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
@@ -2173,6 +2243,34 @@ ${result.content}`;
                             </div>
                           </div>
                           
+                          {/* Save File Toggle */}
+                          <div className="px-4 py-3 hover:bg-[#f9fafb] transition-colors">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                                  isSaveMode ? 'bg-[#7c3aed]' : 'bg-[#f3f4f6]'
+                                }`}>
+                                  <CloudDownload size={16} className={isSaveMode ? 'text-white' : 'text-[#6b7280]'} />
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium text-[#1a1a2e]">Save tool</p>
+                                  <p className="text-xs text-[#6b7280]">Chia nhỏ nội dung</p>
+                                </div>
+                              </div>
+                              {/* Toggle Switch */}
+                              <button
+                                type="button"
+                                onClick={() => setIsSaveMode(!isSaveMode)}
+                                className={`relative w-11 h-6 rounded-full transition-colors ${
+                                  isSaveMode ? 'bg-[#7c3aed]' : 'bg-[#e5e7eb]'
+                                }`}
+                              >
+                                <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${
+                                  isSaveMode ? 'translate-x-5' : 'translate-x-0'
+                                }`} />
+                              </button>
+                            </div>
+                          </div>
 
                           {/* Divider */}
                           <div className="my-1 border-t border-[#e5e7eb]" />
@@ -2211,6 +2309,22 @@ ${result.content}`;
                         onClick={() => setIsObsidianMode(false)}
                         className="ml-1 p-0.5 hover:bg-[#7c3aed]/20 rounded transition-colors"
                         title="Tắt Obsidian Mode"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Save Mode Indicator */}
+                  {isSaveMode && (
+                    <div className="flex items-center gap-1 px-2 py-1 bg-[#7c3aed]/10 text-[#7c3aed] rounded-lg text-xs font-medium ml-1">
+                      <CloudDownload size={12} />
+                      <span>Save</span>
+                      <button
+                        type="button"
+                        onClick={() => setIsSaveMode(false)}
+                        className="ml-1 p-0.5 hover:bg-[#7c3aed]/20 rounded transition-colors"
+                        title="Tắt Save Mode"
                       >
                         <X size={12} />
                       </button>
