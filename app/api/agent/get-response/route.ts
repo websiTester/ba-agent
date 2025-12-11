@@ -22,6 +22,7 @@ export async function POST(request: NextRequest) {
 
     let response = 'Agent này hiện đang trong quá trình phát triển. Vui lòng quay lại sau!';
     //Call the discovery agent with memory support
+    console.log("Phase ID: ", phaseId);
     if(phaseId === 'discovery') {
         response = await discoverDocument(
             message, 

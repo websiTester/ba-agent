@@ -1,13 +1,7 @@
 import { ObjectId } from "mongodb";
 import { connectDB } from "./mongodb";
+import { Account } from "../models/account";
 
-export interface Account{
-    _id?: ObjectId;
-    email: string;
-    password: string;
-    createdAt: Date;
-    updatedAt: Date;
-}
 
 
 const COLLECTION_NAME = "accounts";

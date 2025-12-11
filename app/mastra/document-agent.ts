@@ -1,9 +1,7 @@
 import { Agent } from '@mastra/core/agent';
-import { google } from '@ai-sdk/google';
 import { Memory } from '@mastra/memory';
 import { LibSQLStore } from '@mastra/libsql';
 import { getAgentByName } from '../db/agents';
-import { mastra } from '.';
 
 // Configure Memory with LibSQL storage (file-based, no external services needed)
 const memory = new Memory({

@@ -101,7 +101,7 @@ export async function getAnalysisAgent(): Promise<Agent> {
   analysisAgentInstance = new Agent({
     name,
     instructions,
-    model: "groq/llama-3.3-70b-versatile",
+    model: "google/gemini-2.5-flash",
     memory: memory,
   });
   console.log(`[AnalysisAgent] Loaded from DB: ${instructions}`);

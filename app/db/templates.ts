@@ -1,11 +1,6 @@
 import { ObjectId } from "mongodb";
 import { connectDB } from "./mongodb";
-
-// Interface cho mỗi cặp header-content
-export interface Pair {
-  header: string;
-  content: string;
-}
+import { Pair } from "../models/types";
 
 // Interface cho Template document
 export interface Template {

@@ -11,7 +11,7 @@ import {
   LogIn,
   LogOut
 } from 'lucide-react';
-import { PhaseId } from '../types';
+import { PhaseId } from '../models/types';
 import Link from 'next/link';
 
 export interface User {

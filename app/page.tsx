@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useActionState } from 'react';
 import { useRouter } from 'next/navigation';
 import Sidebar, { User } from './components/Sidebar';
 import ChatPanel from './components/ChatPanel';
 import FileManager from './components/FileManager';
-import { Message, FileItem, PhaseId } from './types';
+import { Message, FileItem, PhaseId } from './models/types';
+import { useAppState } from './store';
 
 // Phase configurations
 const phaseConfig: Record<PhaseId, { name: string; description: string }> = {
@@ -56,7 +57,11 @@ const initialData: Record<PhaseId, { messages: Message[]; files: FileItem[] }> =
 };
 
 export default function Dashboard() {
-  const [activePhase, setActivePhase] = useState<PhaseId>('discovery');
+  //const [activePhase, setActivePhase] = useState<PhaseId>('discovery');
+
+  const activePhase = useAppState(set => set.activePhase);
+  const setActivePhase = useAppState(set => set.setActivePhase);
+
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [fileManagerCollapsed, setFileManagerCollapsed] = useState(false);
   const [phaseData, setPhaseData] = useState(initialData);

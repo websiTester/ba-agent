@@ -3,13 +3,9 @@ dotenv.config();
 
 import { ObjectId } from "mongodb";
 import { connectDB } from "./mongodb";
+import { Agent } from "../models/agent";
 
 
-export interface Agent {
-    _id?: ObjectId;
-    agentName: string;
-    instructions: string;
-}
 
 const COLLECTION_NAME = "agents";
 // Lấy collection templates
