@@ -142,9 +142,9 @@ export async function discoverDocument(
 
   if (documentContent && documentContent.length > 0) {
     formattedPrompt += `---\n`;
-    formattedPrompt += `<user_document>\n`;
+    //formattedPrompt += `<user_document>\n`;
     formattedPrompt += `${documentContent}\n`;
-    formattedPrompt += `</user_document>\n`;
+    //formattedPrompt += `</user_document>\n`;
     formattedPrompt += `---\n`;
     formattedPrompt += `
     QUY TRÌNH THỰC HIỆN (BẮT BUỘC):
@@ -189,6 +189,7 @@ export async function discoverDocument(
     - Trong trường hơp người dùng không cung cấp nội dung tài liệu, hãy phân tích dựa trên các thông tin được cung cấp trong yêu cầu của người dùng.
     Hãy bắt đầu phân tích ngay bây giờ.
     - CHỉ trình bày nội dung của FUNCTIONAL REQUIREMENTS và NON-FUNCTIONAL REQUIREMENTS, đúng 1 lần duy nhất.
+    - Sử dụng thông tin trong <reference_standards> để trả lời cho câu hỏi của người dùng nếu có, để các thông tin này trong mục [##Thông tin liên quan].
     `;
    
   }

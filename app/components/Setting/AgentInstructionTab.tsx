@@ -15,7 +15,8 @@ export default function AgentInstructionTab(
     } : AgentInstructionProb
 ){
 
-    const activePhase = useAppState(set => set.activePhase);
+    //const activePhase = useAppState(set => set.activePhase);
+    const activePhase = "Orchestration";
 
     const [isLoadingAgent, setIsLoadingAgent] = useState(false);
     const [agentInfo, setAgentInfo] = useState<{ agentName: string; instructions: string } | null>(null);
@@ -23,6 +24,7 @@ export default function AgentInstructionTab(
 
     const [editedInstructions, setEditedInstructions] = useState('');
     const [isSavingAgent, setIsSavingAgent] = useState(false);
+    const [model, setModel] = useState("gemini-2.5-flash");
 
 
     // Start editing instructions
@@ -32,6 +34,28 @@ export default function AgentInstructionTab(
       setIsEditingInstructions(true);
     }
   };
+
+
+  const handleSelectionChange = async (e:any) => {
+    const {value} = e.target;
+    console.log("handleSelectionChange: "+value);
+    setModel(value);
+    try {
+      if (!agentInfo) return;
+
+      await fetch('/api/agents', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agentName: agentInfo.agentName,
+          agentModel: value
+        }),
+      });
+
+    } catch(error){
+      console.log("Can not update model!")
+    }
+  }
 
   const handleCancelEditingInstructions = () => {
     setIsEditingInstructions(false);
@@ -113,6 +137,22 @@ export default function AgentInstructionTab(
                           Agent Name
                         </h4>
                         <p className="text-lg font-medium text-[#1a1a2e]">{agentInfo.agentName}</p>
+                      </div>
+
+
+                      <div className="p-4 bg-[#fafbfc] border border-[#e5e7eb] rounded-xl">
+                        <h4 className="text-sm font-semibold text-[#6b7280] uppercase tracking-wider mb-2">
+                          Agent Model
+                        </h4>
+                        <select
+                          name="model"
+                          value={model}
+                          onChange={handleSelectionChange}
+                          className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all cursor-pointer shadow-sm"
+                        >
+                          <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                          <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</option>
+                        </select>
                       </div>
 
                       {/* Agent Instructions */}

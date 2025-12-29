@@ -1,8 +1,14 @@
 import { google } from '@ai-sdk/google';
 import { embed, embedMany } from 'ai';
 import { MDocument } from '@mastra/rag';
-import { DocumentChunk, saveChunks, cosineSimilaritySearch, deleteChunksByFileId } from '../db/chunks';
+import { DocumentChunk, saveChunks, cosineSimilaritySearch, deleteChunksByFileId, saveChunksToPostgres } from '../db/chunks';
 
+
+import dotenv from "dotenv";
+
+dotenv.config();
+const baseUrl = process.env.BASE_URL || "http://127.0.0.1:3001"
+const apiUrl = `${baseUrl}/rag/delete_chunk`
 // Embedding model configuration
 const EMBEDDING_MODEL = 'text-embedding-004';
 
@@ -123,7 +129,8 @@ export async function processDocument(
     
     // 4. Save to MongoDB
     console.log(`[RAG] Saving chunks to database...`);
-    await saveChunks(dbChunks);
+    //await saveChunks(dbChunks);
+    await saveChunksToPostgres(dbChunks);
     
     console.log(`[RAG] Successfully processed ${document.fileName}: ${dbChunks.length} chunks created`);
     return { success: true, chunksCreated: dbChunks.length };
@@ -136,6 +143,20 @@ export async function processDocument(
       error: error instanceof Error ? error.message : 'Unknown error' 
     };
   }
+}
+
+export async function deleteChunksInChroma(phaseId: string | null, fileName: string|null): Promise<void> {
+  const response = await fetch(`${apiUrl}`, {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      phaseId: phaseId,
+      source: fileName,
+    }),
+  });
+  console.log("DELETE chunks in Chroma: "+response.json());
 }
 
 /**

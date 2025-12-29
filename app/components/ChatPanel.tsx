@@ -6,6 +6,7 @@ import { Message, PhaseId } from '../models/types';
 import SettingModel from './Setting/SettingModel';
 import MessageArea from './MessageArea/MessageArea';
 import InputArea from './InputArea/InputArea';
+import InputAreaMention from './InputAreaMention/InputAreaMention';
 
 
 export interface ChatPanelProps {
@@ -138,7 +139,7 @@ export default function ChatPanel({
       />
 
       {/* Input Area - Floating Overlay */}
-      <InputArea
+      <InputAreaMention
       isTyping={isTyping}
       isAgentProcessing={isAgentProcessing}
       setInput={setInput}

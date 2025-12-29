@@ -4,6 +4,11 @@ import { reloadCommunicationAgent } from "@/app/mastra/communication-agent";
 import { reloadDiscoveryAgent } from "@/app/mastra/discovery-agent";
 import { reloadDocumentAgent } from "@/app/mastra/document-agent";
 import { NextRequest, NextResponse } from "next/server";
+import dotenv from "dotenv";
+
+dotenv.config();
+const baseUrl = process.env.BASE_URL || "http://127.0.0.1:3001";
+const refreshUrl = `${baseUrl}/agent_response/refresh_agent`;
 
 // Get agent by name or get all agents
 export async function GET(request: NextRequest) {
@@ -30,13 +35,23 @@ export async function GET(request: NextRequest) {
 // Update agent by name
 export async function PUT(request: NextRequest) {
   try {
-    const { agentName, instructions } = await request.json();
+    const { agentName, instructions, agentModel } = await request.json();
     
     if (!agentName) {
       return NextResponse.json({ error: "Agent name is required" }, { status: 400 });
     }
 
-    await updateAgentByName(agentName, { instructions });
+    if(instructions){
+      console.log("Update instruction");
+      await updateAgentByName(agentName, { instructions });
+    }
+    if(agentModel){
+      console.log("Update model");
+      await updateAgentByName(agentName, { model: agentModel });
+    }
+
+    await fetch(refreshUrl, {method: "PUT"})
+
     // Reload agent để sử dụng instructions mới
 
     if(agentName === "Discovery & Requirements Agent") {

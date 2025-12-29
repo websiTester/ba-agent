@@ -10,6 +10,7 @@ import { saveAs } from 'file-saver';
 import { marked } from 'marked';
 import { asBlob } from 'html-docx-js-typescript';
 import { useEffect, useRef, useState } from "react";
+import Mermaid from "./Mermaid";
 
 interface MessageAreaProb {
     messages: Message[],
@@ -271,6 +272,75 @@ export default function MessageArea({
         scrollToBottom();
     }, [messages]);
 
+    const fixMermaidSyntax = (code: string) => {
+        // 1. Chuẩn hóa cơ bản
+        let processed = code.replace(/\\n/g, '\n'); // Đổi \n thành xuống dòng thật
+      
+        // 2. Xác định loại biểu đồ để áp dụng luật riêng
+        const isUseCase = processed.includes('usecaseDiagram');
+        const isClass = processed.includes('classDiagram');
+      
+        let lines = processed.split('\n');
+        
+        const fixedLines = lines.map(line => {
+          let cleanLine = line.trim();
+      
+          // --- FIX CHUNG CHO MỌI BIỂU ĐỒ ---
+          
+          // Fix lỗi AI dùng từ khóa 'as' của PlantUML (cho Actor, Usecase)
+          // SAI: actor A as "Label" -> ĐÚNG: actor A["Label"]
+          // SAI: usecase U as "Label" -> ĐÚNG: usecase U("Label")
+          if (cleanLine.includes(' as ')) {
+              // Regex bắt: (loại) (id) as "Label"
+              cleanLine = cleanLine.replace(
+                  /(actor|usecase|participant)\s+([a-zA-Z0-9_]+)\s+as\s+"([^"]+)"/g, 
+                  (match, type, id, label) => {
+                      if (type === 'participant') return match; // Sequence dùng 'as' được, giữ nguyên
+                      if (type === 'usecase') return `${type} ${id}("${label}")`;
+                      return `${type} ${id}["${label}"]`;
+                  }
+              );
+          }
+      
+          // --- LOGIC RIÊNG CHO USE CASE DIAGRAM ---
+          if (isUseCase) {
+              // Fix lỗi: AI dùng 'box' (của Sequence) thay vì 'subgraph'
+              if (cleanLine.startsWith('box ')) {
+                  return cleanLine.replace(/^box\s+/, 'subgraph ');
+              }
+              
+              // Cú pháp 'rectangle' cũng chuyển thành 'subgraph'
+              if (cleanLine.startsWith('rectangle ')) {
+                   return cleanLine.replace(/^rectangle\s+"?([^"]+)"?\s*\{?/, 'subgraph "$1"');
+              }
+          }
+      
+          // --- LOGIC RIÊNG CHO CLASS DIAGRAM ---
+          if (isClass) {
+              // Fix lỗi Generics: List<String> -> List~String~
+              cleanLine = cleanLine.replace(/</g, '~').replace(/>/g, '~');
+      
+              // Fix lỗi định nghĩa Class có ngoặc kép: class "Khách Hàng" {
+              // Mermaid Class Diagram rất ghét dấu ngoặc kép và khoảng trắng trong tên ID class
+              // Giải pháp: Xóa ngoặc kép
+              if (cleanLine.startsWith('class "')) {
+                  cleanLine = cleanLine.replace(/class\s+"([^"]+)"/g, 'class $1');
+              }
+              
+              // Fix lỗi quan hệ có ngoặc kép: "Khách hàng" "1" -- "n" "Đơn hàng"
+              // Xóa hết ngoặc kép trong dòng quan hệ để tránh lỗi parse
+              if (cleanLine.includes('--') || cleanLine.includes('..')) {
+                  cleanLine = cleanLine.replace(/"/g, '');
+              }
+          }
+      
+          return cleanLine;
+        });
+        
+        const result = fixedLines.join('\n');
+        console.log("RESPONSE: "+result);
+        return fixedLines.join('\n');
+      };
 
 
     return (
@@ -301,8 +371,8 @@ export default function MessageArea({
                                     onClick={() => handlePromptClick(prompt)}
                                     disabled={isTyping || isAgentProcessing}
                                     className={`text-left px-4 py-3 bg-[#fafbfc] border border-[#e5e7eb] rounded-xl text-sm transition-all ${isTyping || isAgentProcessing
-                                            ? 'text-[#9ca3af] cursor-not-allowed opacity-60'
-                                            : 'text-[#1a1a2e] hover:bg-[#f3f4f6] hover:border-[#f97316] hover:shadow-sm'
+                                        ? 'text-[#9ca3af] cursor-not-allowed opacity-60'
+                                        : 'text-[#1a1a2e] hover:bg-[#f3f4f6] hover:border-[#f97316] hover:shadow-sm'
                                         }`}
                                 >
                                     {prompt}
@@ -336,21 +406,36 @@ export default function MessageArea({
 
                             {/* Message Content */}
                             <div className={`
-                  max-w-[70%] rounded-2xl px-4 py-3
+                  ${message.role === 'user' ? 'max-w-[100%]' : 'max-w-[90%]'} rounded-2xl px-4 py-3
                   ${message.role === 'user'
                                     ? 'bg-[#3b82f6] text-white rounded-tr-md'
                                     : 'bg-[#f3f4f6] text-[#1a1a2e] rounded-tl-md'
                                 }
                 `}>
                                 <div className={`text-sm prose prose-sm max-w-none break-words ${message.role === 'user'
-                                        ? 'prose-invert prose-p:text-white prose-headings:text-white prose-strong:text-white prose-li:text-white'
-                                        : 'prose-gray prose-p:text-[#1a1a2e] prose-headings:text-[#1a1a2e] prose-strong:text-[#1a1a2e]'
+                                    ? 'prose-invert prose-p:text-white prose-headings:text-white prose-strong:text-white prose-li:text-white'
+                                    : 'prose-gray prose-p:text-[#1a1a2e] prose-headings:text-[#1a1a2e] prose-strong:text-[#1a1a2e]'
                                     }`}>
                                     <ReactMarkdown
                                         remarkPlugins={[remarkGfm]}
                                         components={{
                                             // Custom code block styling
                                             code: ({ className, children, node, ...props }) => {
+
+                                                const match = /language-(\w+)/.exec(className || '');
+                                                const isMermaid = match && match[1] === 'mermaid';
+
+                                                if (isMermaid) {
+                                                    // Lấy code gốc
+                                                    const originalCode = String(children).replace(/\n$/, '');
+
+                                                    // --- BƯỚC QUAN TRỌNG: Sửa lỗi cú pháp trước khi render ---
+                                                    const sanitizedCode = fixMermaidSyntax(originalCode);
+
+                                                    // Truyền code đã sửa vào component Mermaid
+                                                    return <Mermaid chart={sanitizedCode} />;
+                                                }
+
                                                 // Check if this is inline code or block code
                                                 // Block code is inside <pre>, inline is not
                                                 const isInline = node?.position?.start.line === node?.position?.end.line &&
@@ -362,8 +447,8 @@ export default function MessageArea({
                                                     return (
                                                         <code
                                                             className={`px-1.5 py-0.5 rounded text-xs font-mono ${message.role === 'user'
-                                                                    ? 'bg-blue-500/30 text-white'
-                                                                    : 'bg-[#f3f4f6] text-[#e11d48]'
+                                                                ? 'bg-blue-500/30 text-white'
+                                                                : 'bg-[#f3f4f6] text-[#e11d48]'
                                                                 }`}
                                                             {...props}
                                                         >
@@ -381,8 +466,8 @@ export default function MessageArea({
                                             // Custom pre (code block) styling
                                             pre: ({ children }) => (
                                                 <pre className={`my-2 p-3 rounded-lg overflow-x-auto text-sm font-mono whitespace-pre-wrap ${message.role === 'user'
-                                                        ? 'bg-blue-600/50 text-white'
-                                                        : 'bg-[#f8f9fa] text-[#1a1a2e] border border-[#e5e7eb]'
+                                                    ? 'bg-blue-600/50 text-white'
+                                                    : 'bg-[#f8f9fa] text-[#1a1a2e] border border-[#e5e7eb]'
                                                     }`}>
                                                     {children}
                                                 </pre>
@@ -418,8 +503,8 @@ export default function MessageArea({
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className={`underline ${message.role === 'user'
-                                                            ? 'text-blue-200 hover:text-white'
-                                                            : 'text-[#f97316] hover:text-[#ea580c]'
+                                                        ? 'text-blue-200 hover:text-white'
+                                                        : 'text-[#f97316] hover:text-[#ea580c]'
                                                         }`}
                                                 >
                                                     {children}
@@ -428,8 +513,8 @@ export default function MessageArea({
                                             // Custom blockquote styling
                                             blockquote: ({ children }) => (
                                                 <blockquote className={`border-l-4 pl-3 my-2 italic ${message.role === 'user'
-                                                        ? 'border-blue-300 text-blue-100'
-                                                        : 'border-[#f97316] text-[#6b7280]'
+                                                    ? 'border-blue-300 text-blue-100'
+                                                    : 'border-[#f97316] text-[#6b7280]'
                                                     }`}>
                                                     {children}
                                                 </blockquote>
@@ -442,16 +527,16 @@ export default function MessageArea({
                                             ),
                                             th: ({ children }) => (
                                                 <th className={`border px-2 py-1 text-left font-semibold ${message.role === 'user'
-                                                        ? 'border-blue-400 bg-blue-500/30'
-                                                        : 'border-[#e5e7eb] bg-[#f3f4f6]'
+                                                    ? 'border-blue-400 bg-blue-500/30'
+                                                    : 'border-[#e5e7eb] bg-[#f3f4f6]'
                                                     }`}>
                                                     {children}
                                                 </th>
                                             ),
                                             td: ({ children }) => (
-                                                <td className={`border px-2 py-1 ${message.role === 'user'
-                                                        ? 'border-blue-400'
-                                                        : 'border-[#e5e7eb]'
+                                                <td className={`border px-2 py-1 whitespace-pre-wrap ${message.role === 'user'
+                                                    ? 'border-blue-400'
+                                                    : 'border-[#e5e7eb]'
                                                     }`}>
                                                     {children}
                                                 </td>
@@ -495,8 +580,8 @@ export default function MessageArea({
                                                     onClick={() => handleSaveToObsidian(message.content, message.id)}
                                                     disabled={savingMessageId === message.id}
                                                     className={`ml-2 px-2.5 py-1 text-white rounded-md transition-all flex items-center gap-1.5 shadow-sm hover:shadow-md ${savingMessageId === message.id
-                                                            ? 'bg-[#9ca3af] cursor-not-allowed'
-                                                            : 'bg-[#7c3aed] hover:bg-[#6d28d9]'
+                                                        ? 'bg-[#9ca3af] cursor-not-allowed'
+                                                        : 'bg-[#7c3aed] hover:bg-[#6d28d9]'
                                                         }`}
                                                     title="Save to Obsidian"
                                                 >
@@ -521,8 +606,8 @@ export default function MessageArea({
                     {(isTyping || isAgentProcessing) && (
                         <div className="flex gap-3">
                             <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isObsidianMode
-                                    ? 'bg-gradient-to-br from-[#7c3aed] to-[#6d28d9]'
-                                    : 'bg-gradient-to-br from-[#f97316] to-[#ea580c]'
+                                ? 'bg-gradient-to-br from-[#7c3aed] to-[#6d28d9]'
+                                : 'bg-gradient-to-br from-[#f97316] to-[#ea580c]'
                                 }`}>
                                 <Bot size={16} className="text-white" />
                             </div>

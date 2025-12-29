@@ -187,7 +187,10 @@ export default function Dashboard() {
     }));
   }, [activePhase]);
 
-  const currentPhase = phaseConfig[activePhase];
+  let currentPhase = phaseConfig[activePhase];
+
+  //Clone to load Orchestation agent data in all setting
+  currentPhase.name = "Orchestration";
   const currentData = phaseData[activePhase];
 
   return (

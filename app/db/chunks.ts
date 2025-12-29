@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import { connectDB } from "./mongodb";
 import { MongoDBVector } from "@mastra/mongodb";
+import { INDEX_NAME, mastra } from "../mastra";
 
 // Interface cho Document Chunk trong MongoDB
 export interface DocumentChunk {
@@ -48,6 +49,7 @@ export interface VectorSearchResult {
     documentType: string;
   };
 }
+
 
 const COLLECTION_NAME = "document_chunks";
 const VECTOR_INDEX_NAME = "document_chunks"; // Same as collection name
@@ -142,6 +144,25 @@ export async function saveChunks(chunks: Omit<DocumentChunk, "_id">[]) {
   return { insertedIds: ids, insertedCount: ids.length };
 }
 
+
+export async function saveChunksToPostgres(chunks: Omit<DocumentChunk, "_id">[]) {
+
+  const embeddings = chunks.map((chunk) => chunk.embedding);
+  const metadata = chunks.map((chunk) => 
+    ({ text: chunk.content, fileId: chunk.fileId, phaseId: chunk.phaseId }));
+
+  const vectorStore = mastra.getVector("pgVector");
+  await vectorStore.createIndex({
+    indexName: INDEX_NAME,
+    dimension: 768,
+  });
+  await vectorStore.upsert({
+    indexName: INDEX_NAME,
+    vectors: embeddings,
+    metadata: metadata,
+  });
+}
+
 // Lấy chunks theo fileId
 export async function getChunksByFileId(fileId: string) {
   const collection = await getChunksCollection();
@@ -155,20 +176,26 @@ export async function getChunksByPhaseId(phaseId: string) {
 }
 
 // Xóa chunks theo fileId (khi xóa file)
+// export async function deleteChunksByFileId(fileId: string) {
+//   try {
+//     const vector = await getMongoVector();
+    
+//     // Delete from Mastra Vector Store by filter
+//     await vector.deleteVectors({
+//       indexName: VECTOR_INDEX_NAME,
+//       filter: { fileId },
+//     });
+    
+//     console.log(`[Mastra] Deleted chunks for fileId: ${fileId}`);
+//   } catch (error) {
+//     console.error("[Mastra] Error deleting vectors:", error);
+//   }
+// }
+
+
 export async function deleteChunksByFileId(fileId: string) {
-  try {
-    const vector = await getMongoVector();
-    
-    // Delete from Mastra Vector Store by filter
-    await vector.deleteVectors({
-      indexName: VECTOR_INDEX_NAME,
-      filter: { fileId },
-    });
-    
-    console.log(`[Mastra] Deleted chunks for fileId: ${fileId}`);
-  } catch (error) {
-    console.error("[Mastra] Error deleting vectors:", error);
-  }
+  const vectorStore = mastra.getVector("pgVector") as any;
+  await vectorStore.deleteVectors({indexName: INDEX_NAME, filter: {fileId: fileId}});
 }
 
 

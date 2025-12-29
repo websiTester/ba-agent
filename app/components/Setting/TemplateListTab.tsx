@@ -23,8 +23,8 @@ export default function TemplateListTab({
     
 }: TemplateTabProps) {
     
-    const activePhase = useAppState(set => set.activePhase);
-
+    //const activePhase = useAppState(set => set.activePhase);
+    const activePhase = "Orchestration";
 
     const [isAddingNew, setIsAddingNew] = useState(false);
     const [newTemplateName, setNewTemplateName] = useState('');

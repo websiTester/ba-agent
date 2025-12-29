@@ -19,11 +19,13 @@ interface InputAreaProb {
   setIsAgentProcessing: any,
   obsidianThreadIdRef: any,
   setIsSettingsOpen: any,
-  lastSavedNote: any
+  lastSavedNote: any,
+  inputRef: any
 }
 
 
 export default function InputArea({
+  inputRef,
   isTyping,
   isAgentProcessing,
   setInput,
@@ -43,7 +45,6 @@ export default function InputArea({
   const [attachedRecord, setAttachedRecord] = useState<AttachedRecord | null>(null);
   const threadIdRef = useRef<string>(`thread-${phaseId}-${Date.now()}`);
   // Store last saved note info for context continuity
-  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {

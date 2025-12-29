@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 // POST - Search relevant chunks cho query
 export async function POST(request: NextRequest) {
   try {
-    const { query, phaseId, limit = 5 } = await request.json();
+    const { query, fileId, phaseId, limit = 5 } = await request.json();
 
     if (!query || !phaseId) {
       return NextResponse.json(

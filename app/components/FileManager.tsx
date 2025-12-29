@@ -14,9 +14,11 @@ import {
   FolderOpen,
   X,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  Loader2
 } from 'lucide-react';
 import { FileItem, ALLOWED_FILE_TYPES, ALLOWED_EXTENSIONS } from '../models/types';
+import UploadModal from './UploadModal';
 
 interface FileManagerProps {
   files: FileItem[];
@@ -67,15 +69,16 @@ export default function FileManager({
   onToggleCollapse
 }: FileManagerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [deletingFileId, setDeletingFileId] = useState<string | null>(null);
 
   const handleUploadClick = () => {
-    fileInputRef.current?.click();
+    setIsUploadModalOpen(true);
   };
 
-  const processFile = async (file: File) => {
+  const processFile = async (file: File, customFileName?: string) => {
     if (!isValidFileType(file)) {
       setUploadStatus({
         type: 'error',
@@ -92,6 +95,9 @@ export default function FileManager({
       const formData = new FormData();
       formData.append('file', file);
       formData.append('phaseId', phaseId);
+      if (customFileName) {
+        formData.append('fileName', customFileName);
+      }
 
       const response = await fetch('/api/files', {
         method: 'POST',
@@ -118,7 +124,7 @@ export default function FileManager({
       onUpload(fileItem);
       setUploadStatus({
         type: 'success',
-        message: `Upload "${file.name}" thành công!`
+        message: `Upload "${result.file.name}" thành công!`
       });
       setTimeout(() => setUploadStatus(null), 3000);
     } catch (error) {
@@ -128,9 +134,14 @@ export default function FileManager({
         message: `Lỗi khi upload "${file.name}". Vui lòng thử lại.`
       });
       setTimeout(() => setUploadStatus(null), 4000);
+      throw error; // Re-throw để Modal có thể xử lý
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const handleModalConfirm = async (file: File, fileName: string) => {
+    await processFile(file, fileName);
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -146,31 +157,11 @@ export default function FileManager({
     }
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-  };
-
-  const handleDrop = async (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    
-    const droppedFiles = e.dataTransfer.files;
-    if (droppedFiles) {
-      for (const file of Array.from(droppedFiles)) {
-        await processFile(file);
-      }
-    }
-  };
-
-  const handleDelete = async (fileId: string) => {
+  const handleDelete = async (fileId: string, fileName: string) => {
+    console.log("fileId: ", fileName);
+    setDeletingFileId(fileId);
     try {
-      const response = await fetch(`/api/files?fileId=${fileId}`, {
+      const response = await fetch(`/api/files?fileId=${fileId}&phaseId=${phaseId}&fileName=${fileName}`, {
         method: 'DELETE',
       });
 
@@ -190,6 +181,8 @@ export default function FileManager({
         message: 'Lỗi khi xóa file. Vui lòng thử lại.'
       });
       setTimeout(() => setUploadStatus(null), 3000);
+    } finally {
+      setDeletingFileId(null);
     }
   };
 
@@ -238,16 +231,24 @@ export default function FileManager({
   }
 
   return (
-    <div className="bg-white rounded-xl border border-[#e5e7eb] h-full flex flex-col">
-      {/* Hidden file input */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        className="hidden"
-        accept=".txt,.doc,.docx,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        multiple
-        onChange={handleFileChange}
+    <>
+      <UploadModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        onConfirm={handleModalConfirm}
+        phaseId={phaseId}
       />
+
+      <div className="bg-white rounded-xl border border-[#e5e7eb] h-full flex flex-col">
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          accept=".txt,.doc,.docx,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          multiple
+          onChange={handleFileChange}
+        />
 
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[#e5e7eb]">
@@ -296,20 +297,9 @@ export default function FileManager({
         </div>
       )}
 
-      {/* Drag & Drop Zone / File List */}
-      <div 
-        className={`flex-1 overflow-y-auto p-3 ${isDragging ? 'bg-[#fff7ed]' : ''}`}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-      >
-        {isDragging ? (
-          <div className="h-full flex flex-col items-center justify-center border-2 border-dashed border-[#f97316] rounded-xl">
-            <Upload size={40} className="text-[#f97316] mb-3" />
-            <p className="text-sm font-medium text-[#f97316]">Thả file vào đây</p>
-            <p className="text-xs text-[#9ca3af] mt-1">Chấp nhận .txt, .docx</p>
-          </div>
-        ) : files.length === 0 ? (
+      {/* File List */}
+      <div className="flex-1 overflow-y-auto p-3">
+        {files.length === 0 ? (
           <div 
             className="flex flex-col items-center justify-center h-full text-center py-8 border-2 border-dashed border-[#e5e7eb] rounded-xl cursor-pointer hover:border-[#f97316] hover:bg-[#fff7ed] transition-all"
             onClick={handleUploadClick}
@@ -317,18 +307,18 @@ export default function FileManager({
             <div className="w-16 h-16 bg-[#f3f4f6] rounded-full flex items-center justify-center mb-3">
               <Upload size={24} className="text-[#9ca3af]" />
             </div>
-            <p className="text-sm text-[#6b7280] mb-1">Click hoặc kéo thả file vào đây</p>
+            <p className="text-sm text-[#6b7280] mb-1">Click để chọn file</p>
             <p className="text-xs text-[#9ca3af]">Chấp nhận .txt, .docx</p>
           </div>
         ) : (
           <div className="space-y-2">
-            {/* Drop zone hint */}
+            {/* Upload hint */}
             <div 
               className="p-2 border border-dashed border-[#e5e7eb] rounded-lg text-center cursor-pointer hover:border-[#f97316] hover:bg-[#fff7ed] transition-all mb-3"
               onClick={handleUploadClick}
             >
               <p className="text-xs text-[#9ca3af]">
-                <span className="text-[#f97316] font-medium">Click</span> hoặc kéo thả để upload thêm file
+                <span className="text-[#f97316] font-medium">Click</span> để upload thêm file
               </p>
             </div>
 
@@ -372,11 +362,16 @@ export default function FileManager({
                       </>
                     )}
                     <button 
-                      onClick={() => handleDelete(file.id)}
-                      className="p-1.5 hover:bg-[#fee2e2] rounded-lg text-[#6b7280] hover:text-[#ef4444] transition-colors"
-                      title="Xóa file"
+                      onClick={() => handleDelete(file.id, file.name)}
+                      disabled={deletingFileId === file.id}
+                      className="p-1.5 hover:bg-[#fee2e2] rounded-lg text-[#6b7280] hover:text-[#ef4444] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      title={deletingFileId === file.id ? "Đang xóa..." : "Xóa file"}
                     >
-                      <Trash2 size={16} />
+                      {deletingFileId === file.id ? (
+                        <Loader2 size={16} className="animate-spin text-[#ef4444]" />
+                      ) : (
+                        <Trash2 size={16} />
+                      )}
                     </button>
                   </div>
                 </div>
@@ -394,5 +389,6 @@ export default function FileManager({
         </div>
       </div>
     </div>
+    </>
   );
 }

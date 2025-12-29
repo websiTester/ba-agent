@@ -1,8 +1,15 @@
 import { createFile, deleteFile, getFilesByPhaseId } from "@/app/db/files";
-import { processDocument, deleteDocumentChunks } from "@/app/mastra/rag-service";
+import { createMention, deleteMentionByFileId } from "@/app/db/tools";
+import { processDocument, deleteDocumentChunks, deleteChunksInChroma } from "@/app/mastra/rag-service";
+import { extractTextContent } from "@/app/utils/extractTextContent";
+import { formatFileSize } from "@/app/utils/formatFileSize";
 import { NextRequest, NextResponse } from "next/server";
+import dotenv from "dotenv";
 
-// GET - Lấy danh sách files theo phaseId
+dotenv.config();
+const baseUrl = process.env.BASE_URL || "http://127.0.0.1:3001"
+const apiUrl = `${baseUrl}/rag/chunk_and_embedding`
+
 export async function GET(request: NextRequest) {
   try {
     
@@ -33,40 +40,8 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Helper: Extract text content from file based on type (chỉ hỗ trợ txt và docx)
-async function extractTextContent(file: File, buffer: Buffer): Promise<string> {
-  const mimeType = file.type;
-  const fileName = file.name.toLowerCase();
 
-  try {
-    // Plain text file (.txt)
-    if (mimeType === 'text/plain' || fileName.endsWith('.txt')) {
-      return buffer.toString('utf-8');
-    }
 
-    // Word document (.docx, .doc)
-    if (mimeType.includes('word') || fileName.endsWith('.docx') || fileName.endsWith('.doc')) {
-      const mammoth = await import('mammoth');
-      const result = await mammoth.extractRawText({ buffer });
-      return result.value;
-    }
-
-    // Fallback: try to read as text
-    return buffer.toString('utf-8');
-  } catch (error) {
-    console.error('Error extracting text content:', error);
-    return '';
-  }
-}
-
-// Helper: Format file size
-function formatFileSize(bytes: number): string {
-  if (bytes === 0) return '0 Bytes';
-  const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
 
 // POST - Upload file mới với RAG processing
 export async function POST(request: NextRequest) {
@@ -74,6 +49,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const phaseId = formData.get('phaseId') as string;
+    const customFileName = formData.get('fileName') as string | null;
 
     if (!file || !phaseId) {
       return NextResponse.json(
@@ -81,6 +57,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Sử dụng custom fileName nếu có, nếu không thì dùng tên file gốc
+    const finalFileName = customFileName || file.name;
 
     // Đọc nội dung file
     const arrayBuffer = await file.arrayBuffer();
@@ -91,14 +70,14 @@ export async function POST(request: NextRequest) {
 
     // Xác định loại file (chỉ hỗ trợ txt và docx)
     let fileType: 'document' | 'text' = 'document';
-    if (file.type === 'text/plain' || file.name.toLowerCase().endsWith('.txt')) {
+    if (file.type === 'text/plain' || finalFileName.toLowerCase().endsWith('.txt')) {
       fileType = 'text';
     }
 
     // Tạo document để lưu vào DB
     const fileDocument = {
       phaseId,
-      fileName: file.name,
+      fileName: finalFileName,
       fileType,
       fileSize: formatFileSize(file.size),
       fileSizeBytes: file.size,
@@ -111,45 +90,69 @@ export async function POST(request: NextRequest) {
     const result = await createFile(fileDocument);
     const fileId = result.insertedId.toString();
 
+
+    //Create mention for file
+    const mention = {
+      label: finalFileName,
+      description: 'Mention for file '+finalFileName+' in phase '+phaseId,
+      type: 'file',
+      fileId: fileId,
+      phaseId: phaseId,
+    };
+    await createMention(mention);
     // 2. Extract text content từ file
-    console.log(`[Upload] Extracting text from: ${file.name}`);
     const textContent = await extractTextContent(file, buffer);
 
     // 3. Process document với RAG (chunking & embedding)
-    let ragResult: { success: boolean; chunksCreated: number; error?: string } = { success: false, chunksCreated: 0 };
-    
-    if (textContent && textContent.trim().length > 0) {
-      console.log(`[Upload] Processing document with RAG...`);
-      ragResult = await processDocument(fileId, phaseId, {
-        content: textContent,
-        fileName: file.name,
-        fileType: fileType,
-        mimeType: file.type,
-      });
+    let ragResult = null;
+    // if (textContent && textContent.trim().length > 0) {
+    //   console.log(`[Upload] Processing document with RAG...`);
+    //   ragResult = await processDocument(fileId, phaseId, {
+    //     content: textContent,
+    //     fileName: finalFileName,
+    //     fileType: fileType,
+    //     mimeType: file.type,
+    //   });
       
-      if (!ragResult.success) {
-        console.warn(`[Upload] RAG processing failed: ${ragResult.error}`);
-      } else {
-        console.log(`[Upload] RAG processing complete: ${ragResult.chunksCreated} chunks created`);
-      }
-    } else {
-      console.warn(`[Upload] No text content extracted from ${file.name}`);
+    //   if (!ragResult.success) {
+    //     console.warn(`[Upload] RAG processing failed: ${ragResult.error}`);
+    //   } else {
+    //     console.log(`[Upload] RAG processing complete: ${ragResult.chunksCreated} chunks created`);
+    //   }
+    // } else {
+    //   console.warn(`[Upload] No text content extracted from ${finalFileName}`);
+    // }
+
+    if(textContent && textContent.trim().length > 0) {
+       ragResult = await fetch(`${apiUrl}/${phaseId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          document: textContent,
+          source: finalFileName,
+          phaseId: phaseId,
+        }),
+       })
+
+       const data = await ragResult.json();
+       console.log("data get from rag/chunk_and_embedding: ", data);
+
     }
 
     return NextResponse.json({
       success: true,
       file: {
         id: fileId,
-        name: file.name,
+        name: finalFileName,
         type: fileType,
         size: formatFileSize(file.size),
         uploadedAt: fileDocument.uploadedAt,
         mimeType: file.type,
       },
       rag: {
-        processed: ragResult.success,
-        chunksCreated: ragResult.chunksCreated,
-        error: ragResult.error || undefined,
+        message: ragResult
       }
     });
   } catch (error) {
@@ -163,6 +166,9 @@ export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const fileId = searchParams.get('fileId');
+    const phaseId = searchParams.get('phaseId');
+    const fileName = searchParams.get('fileName');
+
 
     if (!fileId) {
       return NextResponse.json({ error: "fileId is required" }, { status: 400 });
@@ -170,7 +176,11 @@ export async function DELETE(request: NextRequest) {
 
     // 1. Xóa document chunks từ vector database
     console.log(`[Delete] Removing chunks for file: ${fileId}`);
-    await deleteDocumentChunks(fileId);
+    //await deleteDocumentChunks(fileId);
+    await deleteChunksInChroma(phaseId, fileName);
+
+    //Xóa mention cho file
+    await deleteMentionByFileId(fileId);
 
     // 2. Xóa file từ database
     await deleteFile(fileId);
