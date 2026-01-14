@@ -44,12 +44,6 @@ const phasePrompts: Record<PhaseId, string[]> = {
     'Tạo checklist bàn giao cho dev team',
     'Q&A về requirements',
   ],
-  'quick-chat': [
-    'Giải thích khái niệm BA',
-    'Best practices cho requirement gathering',
-    'Làm thế nào để prioritize requirements?',
-    'Cách viết user story hiệu quả',
-  ],
 };
 
 

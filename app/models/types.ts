@@ -25,7 +25,7 @@ export interface Phase {
   files: FileItem[];
 }
 
-export type PhaseId = 'discovery' | 'analysis' | 'documentation' | 'communication' | 'quick-chat';
+export type PhaseId = 'discovery' | 'analysis' | 'documentation' | 'communication';
 
 // Allowed file types for upload (chỉ hỗ trợ txt và docx)
 export const ALLOWED_FILE_TYPES = {

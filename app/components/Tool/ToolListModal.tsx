@@ -24,8 +24,6 @@ const deleteToolUrl = `${baseUrl}/tools_management/delete_tool`
 
 interface ToolListModalProps {
   setShowToolModal: any;
-  isOpen: boolean;
-  onClose: () => void;
   refreshTool: number;
   tools: any;
   setTools: any;
@@ -33,7 +31,11 @@ interface ToolListModalProps {
   isLoadingTools: boolean
 }
 
-export default function ToolListModal({isLoadingTools,setSelectedTool, tools, setTools, refreshTool, setShowToolModal, isOpen, onClose }: ToolListModalProps) {
+export default function ToolListModal({isLoadingTools,setSelectedTool, tools, setTools, refreshTool, setShowToolModal}: ToolListModalProps) {
+  
+  const setShowToolListModal = useAppState(state => state.setShowToolListModal);
+  const showToolListModal = useAppState(state => state.showToolListModal);
+
   const phaseId = useAppState(state => state.activePhase);
   //const [tools, setTools] = useState<any[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -95,23 +97,21 @@ export default function ToolListModal({isLoadingTools,setSelectedTool, tools, se
     }
   };
 
-  // Load templates and agent info when settings modal opens or phase changes
   useEffect(() => {
-    if (isOpen) {
-      //fetchTools();
+    if(showToolListModal){
+      fetchTools()
     }
-  }, [phaseId, isOpen, refreshTool]);
-
+  }, [showToolListModal]);
 
   // Nếu modal không mở thì không render gì cả
-  if (!isOpen) return null;
+  if (!showToolListModal) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Overlay: Lớp nền mờ phía sau, bấm vào sẽ đóng modal */}
       <div 
         className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
-        onClick={onClose}
+        onClick={() => setShowToolListModal(false)}
       ></div>
 
       {/* Modal Content */}
@@ -126,7 +126,7 @@ export default function ToolListModal({isLoadingTools,setSelectedTool, tools, se
             <h3 className="text-lg font-semibold text-gray-800">Quản lý Công cụ</h3>
           </div>
           <button 
-            onClick={onClose}
+            onClick={() => setShowToolListModal(false)}
             className="p-2 text-gray-400 hover:text-orange-600 hover:bg-orange-100 rounded-full transition-colors"
           >
             <X size={20} />

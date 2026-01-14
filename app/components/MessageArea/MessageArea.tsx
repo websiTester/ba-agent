@@ -11,6 +11,7 @@ import { marked } from 'marked';
 import { asBlob } from 'html-docx-js-typescript';
 import { useEffect, useRef, useState } from "react";
 import Mermaid from "./Mermaid";
+import TableComponent from "./TableComponent";
 
 interface MessageAreaProb {
     messages: Message[],
@@ -35,7 +36,6 @@ export default function MessageArea({
     phaseDescription,
     phasePrompts,
     isTyping,
-    isAgentProcessing,
     setInput,
     inputRef,
     setIsAgentProcessing,
@@ -47,6 +47,7 @@ export default function MessageArea({
 
 }: MessageAreaProb) {
 
+    const isAgentProcessing = useAppState(state => state.isAgentProcessing);
     const phaseId = useAppState(set => set.activePhase);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -342,11 +343,14 @@ export default function MessageArea({
         return fixedLines.join('\n');
       };
 
+      
+
+      
 
     return (
 
         <div className="flex-1 overflow-y-auto p-5 pb-36 space-y-4">
-            {messages.length === 0 ? (
+            {messages.length === 0 && isAgentProcessing==false ? (
                 <div className="flex flex-col items-center justify-center h-[calc(100%-120px)] text-center">
                     <div className="w-20 h-20 bg-gradient-to-br from-[#fff7ed] to-[#ffedd5] rounded-2xl flex items-center justify-center mb-4">
                         <Sparkles size={32} className="text-[#f97316]" />
@@ -601,9 +605,12 @@ export default function MessageArea({
                             </div>
                         </div>
                     ))}
+                    <div ref={messagesEndRef} />
+                </>
+            )}
 
-                    {/* Typing Indicator */}
-                    {(isTyping || isAgentProcessing) && (
+            {/* Typing Indicator */}
+            {(isTyping || isAgentProcessing) && (
                         <div className="flex gap-3">
                             <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isObsidianMode
                                 ? 'bg-gradient-to-br from-[#7c3aed] to-[#6d28d9]'
@@ -639,9 +646,6 @@ export default function MessageArea({
                             </div>
                         </div>
                     )}
-                    <div ref={messagesEndRef} />
-                </>
-            )}
         </div>
 
     );

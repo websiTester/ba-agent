@@ -18,12 +18,10 @@ interface BottomToolBarProps {
     setIsObsidianMode: any;
     setIsSettingsOpen: any;
     input: string;
-    setShowToolListModal:any
 }
 
 
 export default function BottomToolBar({
-    setShowToolListModal,
     setAttachedFile,
     setAttachedRecord,
     isTyping,
@@ -207,21 +205,7 @@ export default function BottomToolBar({
                     <Paperclip size={18} />
                   </button>
 
-                  <button
-                    type="button"
-       
-                    disabled={isTyping || isAgentProcessing}
-                    className={`p-2 rounded-lg transition-colors ${
-                      isTyping || isAgentProcessing
-                        ? 'text-[#d1d5db] cursor-not-allowed'
-                        : attachedFile?.content 
-                          ? 'text-[#10b981] bg-[#ecfdf5]' 
-                          : 'text-[#6b7280] hover:text-[#f97316] hover:bg-[#fff7ed]'
-                    }`}
-                    title="Thêm tool"
-                  >
-                    <Hammer size={18} onClick={() => setShowToolListModal(true)} />
-                  </button>
+                 
                   
 
                   {/* Options Menu Button */}

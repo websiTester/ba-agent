@@ -21,7 +21,6 @@ interface ToolModalProps {
 
 export default function ToolModal({ setSelectedTool, selectedTool, isOpen = true, setIsOpen, setRefreshTool, refreshTool }: ToolModalProps) {
     // State quản lý dữ liệu form
-
     const phaseId = useAppState(state => state.activePhase);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -29,6 +28,7 @@ export default function ToolModal({ setSelectedTool, selectedTool, isOpen = true
       phaseId: phaseId || '',
       toolName: '',
       toolDescription: '',
+      toolPrompt: '',
       agentToolName: '',
       agentToolDescription: '',
       agentInstruction: '',
@@ -48,6 +48,7 @@ export default function ToolModal({ setSelectedTool, selectedTool, isOpen = true
         phaseId: phaseId || '',
         toolName: '',
         toolDescription: '',
+        toolPrompt: '',
         agentToolName: '',
         agentToolDescription: '',
         agentInstruction: '',
@@ -115,6 +116,7 @@ export default function ToolModal({ setSelectedTool, selectedTool, isOpen = true
          phaseId: phaseId || '',
          toolName: selectedTool.toolName,
          toolDescription: selectedTool.toolDescription,
+         toolPrompt: selectedTool.toolPrompt || '',
          agentToolName: selectedTool.agentToolName,
          agentToolDescription: selectedTool.agentToolDescription,
          agentInstruction: selectedTool.agentInstruction,
@@ -270,6 +272,19 @@ export default function ToolModal({ setSelectedTool, selectedTool, isOpen = true
                       onChange={handleChange}
                       rows={2}
                       placeholder="Mô tả chức năng của tool này..."
+                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all placeholder:text-gray-400 resize-none shadow-sm"
+                    />
+                  </div>
+
+                  {/* Tool Description - Full Width */}
+                  <div className="space-y-1.5 md:col-span-2">
+                    <label className="text-sm font-semibold text-gray-700">Tool Prompt</label>
+                    <textarea
+                      name="toolPrompt"
+                      value={formData.toolPrompt}
+                      onChange={handleChange}
+                      rows={2}
+                      placeholder="Prompt này sẽ tự động được áp dụng khi sử dụng tool"
                       className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all placeholder:text-gray-400 resize-none shadow-sm"
                     />
                   </div>

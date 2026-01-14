@@ -49,7 +49,10 @@ export default function ChatInput({
   setIsSettingsOpen,
   lastSavedNote
 }: InputAreaMentionProps) {
-  
+
+  const refreshTool = useAppState(state => state.refreshTool);
+  const setRefreshTool = useAppState(state => state.setRefreshTool);
+
   const phaseId = useAppState(state => state.activePhase);
   const [attachedFile, setAttachedFile] = useState<AttachedFile | null>(null);
   const [attachedRecord, setAttachedRecord] = useState<AttachedRecord | null>(null);
@@ -66,8 +69,7 @@ export default function ChatInput({
   const mentionsRef = useRef<MentionDB[]>([]);
   const isLoadingMentionRef = useRef(false);
   const [showToolModal, setShowToolModal] = useState(false);
-  const [showToolListModal, setShowToolListModal] = useState(false);
-  const [refreshTool, setRefreshTool] = useState(0);
+  
   const [tools, setTools] = useState<any[]>([]);
   const [selectedTool, setSelectedTool] = useState<any>(null);
   const [isLoadingTools, setIsLoadingTools] = useState(false);
@@ -192,61 +194,12 @@ export default function ChatInput({
     setInput('');
   };
 
-  const callUiAnalyzeAgent = async (message: string, documentContent: string) => {
-    setIsAgentProcessing(true);
-    try {
-      const response = await fetch('/api/agent/ui-analyze', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message,
-          documentContent,
-          threadId: threadIdRef.current,
-          resourceId: `user-${phaseId}`,
-          phaseId: phaseId,
-        }),
-      });
-
-      const data = await response.json();
-      console.log("=====data get response from discovery agent:===== ", data);
-      if (!response.ok) {
-        throw new Error(data.error || 'Lỗi khi gọi Discovery Agent');
-      }
-
-      return data.response;
-    } catch (error) {
-      console.error('UI Analyze Agent Error:', error);
-      throw error;
-    } finally {
-      setIsAgentProcessing(false);
-    }
-  }
-
   const callAgent = async (message: string, documentContent: string) => {
     setIsAgentProcessing(true);
     try {
 
-      let combinedContent = '';
-
-      // const ragContext = await fetchRAGContext(message);
-
-      // if (documentContent) {
-      //   let userDocumentContent = `ĐÂY LÀ TÀI LIỆU CẦN PHÂN TÍCH:\n`;
-      //   userDocumentContent = `<user_document>\n`;
-      //   userDocumentContent += `${documentContent}\n`;
-      //   userDocumentContent += `</user_document>\n`;
-      //   combinedContent += `${userDocumentContent}\n`;
-      // }
-
-      // if (ragContext) {
-      //   combinedContent += ragContext + '\n';
-      // }
-
       let response = null;
-      //if(currentMention?.type === "tool" && currentMention?.label === "Analyze UI/UX") {
-      //if(currentMention?.type === "tool") {  
+ 
         response = await fetch('/api/agent/ui-analyze', {
           method: 'POST',
           headers: {
@@ -261,22 +214,6 @@ export default function ChatInput({
           }),
         });
 
-      // } else {
-      //   response = await fetch('/api/agent/get-response', {
-      //     method: 'POST',
-      //     headers: {
-      //       'Content-Type': 'application/json',
-      //     },
-      //     body: JSON.stringify({
-      //       message,
-      //       documentContent: combinedContent,
-      //       threadId: threadIdRef.current,
-      //       resourceId: `user-${phaseId}`,
-      //       phaseId: phaseId,
-      //     }),
-      //   });
-      // }
-      // 3. Gọi Discovery Agent với context đầy đủ
       
 
       const data = await response.json();
@@ -341,70 +278,6 @@ export default function ChatInput({
   };
 
 
-  // Fetch RAG context từ document chunks
-  const fetchRAGContext = async (query: string): Promise<string> => {
-    try {
-
-      const response = await fetch('/api/graph-rag', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query,
-          phaseId,
-          fileId: currentMentionDoc?.fileId,
-          limit: 20, // Top 20 chunks liên quan nhất
-        }),
-      });
-
-      if (!response.ok) {
-        console.warn('RAG search failed, continuing without context');
-        return '';
-      }
-
-      const data = await response.json();
-      console.log("data.text get from graph-rag: ", data.text);
-
-      const text = data.text.replace(/```json/g, '').replace(/```/g, '');
-      const objectData = JSON.parse(text);
-      console.log("objectData: ", objectData);
-      console.log("objectData.retrieved_context: ", objectData.retrieved_context);
-
-      if (objectData.retrieved_context) {
-        // Format chunks thành context string
-//         const contextParts = data.results.map((result: {
-//           fileName: string;
-//           chunkIndex: number;
-//           totalChunks: number;
-//           metadata: { section?: string };
-//           content: string;
-//           score: number;
-//         }, index: number) => {
-//           // const sectionInfo = result.metadata?.section ? `[Section: ${result.metadata.section}]` : '';
-//           // const sourceInfo = `[Nguồn: ${result.fileName}, Phần ${result.chunkIndex + 1}/${result.totalChunks}]`;
-//           // const relevanceInfo = `[Độ liên quan: ${(result.score * 100).toFixed(1)}%]`;
-
-// //           return `### Ngữ cảnh ${index + 1}
-// // ${sourceInfo} ${sectionInfo} ${relevanceInfo}
-// // ${result.content}`;
-//           return `### Thông tin liên quan  đến yêu cầu người dùng: \n
-//           ${result.content}`;
-//         });
-
-
-        let referenceStandards = `ĐÂY LÀ THÔNG TIN LIÊN QUAN ĐẾN YÊU CẦU NGƯỜI DÙNG (RAG CONTEXT), SỬ DỤNG CÁC THÔNG TIN TRONG <reference_standards> để trả lời cho câu hỏi của người dùng:\n`;
-        referenceStandards += `<reference_standards>\n`;
-        referenceStandards += `${objectData.retrieved_context}\n`;
-        referenceStandards += `</reference_standards>\n`;
-
-        return `${referenceStandards}`;
-      }
-
-      return '';
-    } catch (error) {
-      console.error('Error fetching RAG context:', error);
-      return '';
-    }
-  };
 
   useEffect(() => {
     if (!editor) return
@@ -556,8 +429,6 @@ export default function ChatInput({
             <EditorContent editor={editor}   />
 
             <BottomToolBar
-              
-              setShowToolListModal={setShowToolListModal}
               setAttachedFile={setAttachedFile}
               setAttachedRecord={setAttachedRecord}
               isTyping={isTyping}
@@ -580,10 +451,7 @@ export default function ChatInput({
             tools={tools}
             setTools={setTools}
             refreshTool={refreshTool}
-            setShowToolModal={setShowToolModal}
-            isOpen={showToolListModal} 
-            onClose={() => setShowToolListModal(false)}
-            
+            setShowToolModal={setShowToolModal}            
         />
       
         <ToolModal 
