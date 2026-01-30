@@ -14,49 +14,6 @@ import AILoadingCard from './components/MessageArea/Loading';
 import AIResponseRenderer from './components/MessageArea/AIResponseRenderer';
 import { mergeData } from './utils/merge-response';
 
-const MOCK_DATA = [
-    {
-      agent_source: 'requirement_analysis',
-      response_type: 'interactive_table',
-      title: 'Danh sách Yêu cầu Chức năng & Phi chức năng cho AI Business Analyst Assistant',
-      data_format: 'csv',
-      data: 'id,type,name,description,rationale\n' +
-        'FR-01,FR,"Xử lý ý tưởng thô sơ","Tiếp nhận và diễn giải các ý tưởng dự án ban đầu từ người dùng/khách hàng.","Để khởi đầu quá trình phân tích yêu cầu từ input không cấu trúc."\n' +
-        'FR-02,FR,"Đặt câu hỏi làm rõ","Chủ động đặt các câu hỏi liên quan để làm rõ thông tin, quy trình, và các yêu cầu chi tiết của ý tưởng.","Để thu thập đủ thông tin cần thiết, giống như một BA thực thụ."\n' +
-        'FR-03,FR,"Trích xuất và phân loại yêu cầu","Tự động xác định, trích xuất và phân loại các yêu cầu thành Functional Requirements (FR) và Non-functional Requirements (NFR) từ cuộc hội thoại.","Để cung cấp một danh sách yêu cầu có cấu trúc và rõ ràng."\n' +
-        'FR-04,FR,"Đề xuất cải tiến/Gợi ý","Phân tích các yêu cầu đã đưa ra, phát hiện thiếu sót/không logic và đề xuất các gợi ý hoặc phương án cải tiến quy trình/yêu cầu.","Để bổ sung và hoàn thiện các yêu cầu, nâng cao chất lượng đầu ra."\n' +
-        'FR-05,FR,"Vẽ lưu đồ quy trình","Tạo ra lưu đồ quy trình (Flowchart/Activity Diagram) dựa trên thông tin thu thập được, có thể xuất ra dưới dạng code PlantUML.","Để minh họa trực quan quy trình nghiệp vụ và giúp BA dễ dàng chỉnh sửa."\n' +
-        'FR-06,FR,"Tổng hợp tài liệu đặc tả nháp","Biên soạn toàn bộ cuộc hội thoại và các yêu cầu đã trích xuất thành một tài liệu đặc tả (SRS/FSD) nháp theo cấu trúc chuẩn.","Để cung cấp một tài liệu khởi điểm cho đội ngũ BA và Dev."\n' +
-        'FR-07,FR,"Lưu trữ ngữ cảnh và lịch sử","Ghi nhớ ngữ cảnh của dự án và toàn bộ lịch sử hội thoại, cho phép tiếp tục tương tác mà không cần mô tả lại từ đầu.","Để duy trì tính liên tục của cuộc trò chuyện và hiệu quả làm việc."\n' +
-        'NFR-01,NFR,"Độ chính xác","Đảm bảo độ chính xác cao trong việc trích xuất, phân loại yêu cầu và tạo ra các đề xuất, lưu đồ, tài liệu đặc tả.","Đảm bảo chất lượng và độ tin cậy của thông tin mà Agent cung cấp."\n' +
-        'NFR-02,NFR,"Hiệu năng phản hồi","Hệ thống cần có khả năng xử lý nhanh các yêu cầu và phản hồi trong thời gian hợp lý.","Đảm bảo trải nghiệm người dùng mượt mà và hiệu quả làm việc."\n' +
-        'NFR-03,NFR,"Bảo mật dữ liệu","Đảm bảo an toàn và bảo mật cho dữ liệu hội thoại, thông tin dự án và các tài liệu được tạo ra.","Để bảo vệ thông tin nhạy cảm của khách hàng và dự án."\n' +
-        'NFR-04,NFR,"Khả năng mở rộng","Hệ thống cần có khả năng mở rộng để hỗ trợ đồng thời nhiều BA và quản lý nhiều dự án.","Đảm bảo Agent có thể phục vụ nhiều người dùng và quy mô dự án khác nhau."\n' +
-        'NFR-05,NFR,"Tính dễ chỉnh sửa (PlantUML)","Đầu ra PlantUML phải dễ hiểu và dễ chỉnh sửa bởi người dùng.","Tăng cường khả năng kiểm soát và tùy chỉnh của BA đối với các lưu đồ."\n' +
-        'NFR-06,NFR,"Tuân thủ cấu trúc chuẩn","Tài liệu đặc tả nháp phải tuân thủ cấu trúc SRS/FSD chuẩn ngành.","Đảm bảo tính chuyên nghiệp và khả năng sử dụng của tài liệu trong quy trình phát triển."'
-    },
-    {
-      agent_source: 'requirement_analysis',
-      response_type: 'interactive_table',
-      title: 'Danh sách Yêu cầu Chức năng & Phi chức năng cho AI Business Analyst Assistant',
-      data_format: 'csv',
-      data: 'id,type,name,description,rationale\n' +
-        'FR-01,FR,"Xử lý ý tưởng thô sơ","Tiếp nhận và diễn giải các ý tưởng dự án ban đầu từ người dùng/khách hàng.","Để khởi đầu quá trình phân tích yêu cầu từ input không cấu trúc."\n' +
-        'FR-02,FR,"Đặt câu hỏi làm rõ","Chủ động đặt các câu hỏi liên quan để làm rõ thông tin, quy trình, và các yêu cầu chi tiết của ý tưởng.","Để thu thập đủ thông tin cần thiết, giống như một BA thực thụ."\n' +
-        'FR-03,FR,"Trích xuất và phân loại yêu cầu","Tự động xác định, trích xuất và phân loại các yêu cầu thành Functional Requirements (FR) và Non-functional Requirements (NFR) từ cuộc hội thoại.","Để cung cấp một danh sách yêu cầu có cấu trúc và rõ ràng."\n' +
-        'FR-04,FR,"Đề xuất cải tiến/Gợi ý","Phân tích các yêu cầu đã đưa ra, phát hiện thiếu sót/không logic và đề xuất các gợi ý hoặc phương án cải tiến quy trình/yêu cầu.","Để bổ sung và hoàn thiện các yêu cầu, nâng cao chất lượng đầu ra."\n' +
-        'FR-05,FR,"Vẽ lưu đồ quy trình","Tạo ra lưu đồ quy trình (Flowchart/Activity Diagram) dựa trên thông tin thu thập được, có thể xuất ra dưới dạng code PlantUML.","Để minh họa trực quan quy trình nghiệp vụ và giúp BA dễ dàng chỉnh sửa."\n' +
-        'FR-06,FR,"Tổng hợp tài liệu đặc tả nháp","Biên soạn toàn bộ cuộc hội thoại và các yêu cầu đã trích xuất thành một tài liệu đặc tả (SRS/FSD) nháp theo cấu trúc chuẩn.","Để cung cấp một tài liệu khởi điểm cho đội ngũ BA và Dev."\n' +
-        'FR-07,FR,"Lưu trữ ngữ cảnh và lịch sử","Ghi nhớ ngữ cảnh của dự án và toàn bộ lịch sử hội thoại, cho phép tiếp tục tương tác mà không cần mô tả lại từ đầu.","Để duy trì tính liên tục của cuộc trò chuyện và hiệu quả làm việc."\n' +
-        'NFR-01,NFR,"Độ chính xác","Đảm bảo độ chính xác cao trong việc trích xuất, phân loại yêu cầu và tạo ra các đề xuất, lưu đồ, tài liệu đặc tả.","Đảm bảo chất lượng và độ tin cậy của thông tin mà Agent cung cấp."\n' +
-        'NFR-02,NFR,"Hiệu năng phản hồi","Hệ thống cần có khả năng xử lý nhanh các yêu cầu và phản hồi trong thời gian hợp lý.","Đảm bảo trải nghiệm người dùng mượt mà và hiệu quả làm việc."\n' +
-        'NFR-03,NFR,"Bảo mật dữ liệu","Đảm bảo an toàn và bảo mật cho dữ liệu hội thoại, thông tin dự án và các tài liệu được tạo ra.","Để bảo vệ thông tin nhạy cảm của khách hàng và dự án."\n' +
-        'NFR-04,NFR,"Khả năng mở rộng","Hệ thống cần có khả năng mở rộng để hỗ trợ đồng thời nhiều BA và quản lý nhiều dự án.","Đảm bảo Agent có thể phục vụ nhiều người dùng và quy mô dự án khác nhau."\n' +
-        'NFR-05,NFR,"Tính dễ chỉnh sửa (PlantUML)","Đầu ra PlantUML phải dễ hiểu và dễ chỉnh sửa bởi người dùng.","Tăng cường khả năng kiểm soát và tùy chỉnh của BA đối với các lưu đồ."\n' +
-        'NFR-06,NFR,"Tuân thủ cấu trúc chuẩn","Tài liệu đặc tả nháp phải tuân thủ cấu trúc SRS/FSD chuẩn ngành.","Đảm bảo tính chuyên nghiệp và khả năng sử dụng của tài liệu trong quy trình phát triển."'
-    }
-]
-
 
 // Phase configurations
 const phaseConfig: Record<PhaseId, { name: string; description: string }> = {
@@ -113,6 +70,7 @@ export default function Dashboard() {
   const [phaseData, setPhaseData] = useState(initialData);
   const [loadedPhases, setLoadedPhases] = useState<Set<PhaseId>>(new Set());
   const [user, setUser] = useState<User | null>(null);
+  const [isLoadingData, setIsLoadingData] = useState(false); // State để track loading từ DB
   const router = useRouter();
   const isAgentProcessing = useAppState(state => state.isAgentProcessing);
 
@@ -136,16 +94,20 @@ export default function Dashboard() {
     router.push('/login');
   }, [router]);
 
-  // Load files từ database khi phase thay đổi
+  // Load files và AI responses từ database khi phase thay đổi
   useEffect(() => {
-    const loadFilesFromDB = async () => {
+    const loadDataFromDB = async () => {
       // Chỉ load nếu chưa load phase này trước đó
       if (loadedPhases.has(activePhase)) return;
 
+      // Bắt đầu loading
+      setIsLoadingData(true);
+
       try {
-        const response = await fetch(`/api/files?phaseId=${activePhase}`);
-        if (response.ok) {
-          const filesFromDB = await response.json();
+        // --- 1. LOAD FILES ---
+        const filesResponse = await fetch(`/api/files?phaseId=${activePhase}`);
+        if (filesResponse.ok) {
+          const filesFromDB = await filesResponse.json();
 
           // Chuyển đổi data từ DB thành FileItem format
           const fileItems: FileItem[] = filesFromDB.map((file: {
@@ -184,16 +146,42 @@ export default function Dashboard() {
               files: fileItems,
             }
           }));
-
-          // Đánh dấu đã load phase này
-          setLoadedPhases(prev => new Set(prev).add(activePhase));
         }
+
+        // --- 2. LOAD AI RESPONSES ---
+        const responsesResponse = await fetch(`/api/responses?phaseId=${activePhase}`);
+        if (responsesResponse.ok) {
+          const responsesData = await responsesResponse.json();
+          
+          // Check if API call was successful
+          if (responsesData.success && responsesData.data) {
+            console.log(`✅ Loaded ${responsesData.count} AI responses for phase: ${activePhase}`);
+            
+            // Set AI responses vào phaseData
+            setPhaseData(prev => ({
+              ...prev,
+              [activePhase]: {
+                ...prev[activePhase],
+                aiResponse: responsesData.data, // Array of AI responses
+              }
+            }));
+          } else {
+            console.warn(`⚠️ No AI responses found for phase: ${activePhase}`);
+          }
+        }
+
+        // Đánh dấu đã load phase này
+        setLoadedPhases(prev => new Set(prev).add(activePhase));
+        
       } catch (error) {
-        console.error('Error loading files from DB:', error);
+        console.error('Error loading data from DB:', error);
+      } finally {
+        // Kết thúc loading
+        setIsLoadingData(false);
       }
     };
 
-    loadFilesFromDB();
+    loadDataFromDB();
   }, [activePhase, loadedPhases]);
 
   const handleSendMessage = useCallback((content: string, role: 'user' | 'assistant' = 'user') => {
@@ -218,8 +206,7 @@ export default function Dashboard() {
 
   const handleAIResponse = useCallback((aiResponse: any) => {
     //Merge new AI response with existing ones
-    console.log(`Old response: ${currentData.aiResponse}`);
-    console.log(`New response: ${aiResponse}`);
+    
     const response = mergeData(currentData.aiResponse || [], aiResponse);
     console.log(`Merged response: ${response}`);
     setPhaseData(prev => ({
@@ -274,6 +261,10 @@ export default function Dashboard() {
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
         user={user}
         onLogout={handleLogout}
+        knowledgeBaseFiles={currentData.files}
+        isLoadingFiles={isLoadingData}
+        onFileUpload={handleFileUpload}
+        onFileDelete={handleFileDelete}
       />
 
       {/* Main Content */}
@@ -324,7 +315,8 @@ export default function Dashboard() {
               )
             ) :  */}
             {
-            isAgentProcessing ? (
+            // Hiển thị loading khi đang load data từ DB hoặc agent đang xử lý
+            isLoadingData || isAgentProcessing ? (
                 <div className="w-full h-full min-h-[400px] flex items-center justify-center relative overflow-hidden bg-gray-50/50 rounded-2xl">
 
                   {/* --- AMBIENT BACKGROUND --- */}
@@ -338,31 +330,20 @@ export default function Dashboard() {
 
                   {/* --- CONTENT --- */}
                   <div className="relative z-10">
-                    <AILoadingCard />
+                    <AILoadingCard 
+                    message={isLoadingData ? "Loading data" : "Đang phân tích"}
+                    />
                   </div>
 
                 </div>
               ) : currentData.aiResponse &&  (
                   
                   <AIResponseRenderer 
+                   handleAIResponse={handleAIResponse}
                    aiResponse={currentData.aiResponse}
                   />
                 )
               }
-
-            {/* {
-MOCK_DATA && MOCK_DATA.map((response: any, index:number) => (
-                  
-                  <AIResponseRenderer 
-                   key = {index}
-                   aiResponse={MOCK_DATA}
-                  />
-                ))
-            } */}
-           
-
-
-
 
 
           </div>

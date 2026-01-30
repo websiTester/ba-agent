@@ -13,12 +13,13 @@ export async function POST(request: NextRequest) {
     const { message,selectedTools, documentContent, threadId, phaseId } = await request.json();
 
     let toolPrompt = "";
+    if(selectedTools && selectedTools.length > 0) {
     selectedTools.map((item:any) => {
       toolPrompt += `Sử dụng tool ${item.label} để sử lý yêu cầu: ${item.toolPrompt}\n\n`
     })
+  }
 
-    const tools  =  `${toolPrompt}.\n
-                     Nếu tool không thể sử lý yêu cầu, trả về cho người dùng: Tool không thể sử lý yêu cầu này, vui lòng chọn tool khác.`;
+    const tools  =  `${toolPrompt}.\n`;
     
     let combinedMessage = `Sử lý yêu cầu sau của người dùng: ${message} \n\n ${tools} \n\n`;
     
@@ -37,44 +38,80 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("COMBINED MESSAGE: "+combinedMessage);
-    const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          input: combinedMessage,
-          phase_id: phaseId,
-          thread_id: threadId,
-        }),
-        // THÊM DÒNG NÀY: Tăng signal timeout (ví dụ 10 phút)
-        // Lưu ý: Cần Node.js v17.3+ để dùng AbortSignal.timeout
-        signal: AbortSignal.timeout(6000000),
-    });
-
-
-    const data = await response.json(); 
-    console.log("JSON get from agent_response: ", data);
-    // Lúc này data sẽ là: { "message": "Nội dung string dài..." }
-    let text = "";    
-
-    // if(Array.isArray(data.message)) {
-    //   text = data.message[0]?.text ||  data.message[0] || "";
-    //   if(data.message.length > 1) {
-    //     for(let i=1; i<data.message.length; i++){
-    //       text += "\n\n";
-    //       text += data.message[i];
-    //     }
-    //   } 
-    // } else {
-    //   text = data.message || "";
-    // }
     
-    console.log("=======Data from FastAPI:=========", data.message);
+    // Create abort controller with longer timeout (15 minutes = 900000ms)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 900000); // 15 minutes
     
-    return NextResponse.json({
-        success: true,
-        response: data.message,
-        threadId: threadId || generateThreadId(),
-    });
+    try {
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              input: combinedMessage,
+              phase_id: phaseId,
+              thread_id: threadId,
+            }),
+            signal: controller.signal,
+            // Additional options for better timeout handling
+            keepalive: true,
+        });
+
+        clearTimeout(timeoutId); // Clear timeout if request succeeds
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json(); 
+        console.log("JSON get from agent_response: ", data);
+        // Lúc này data sẽ là: { "message": "Nội dung string dài..." }
+        let text = "";    
+
+        // if(Array.isArray(data.message)) {
+        //   text = data.message[0]?.text ||  data.message[0] || "";
+        //   if(data.message.length > 1) {
+        //     for(let i=1; i<data.message.length; i++){
+        //       text += "\n\n";
+        //       text += data.message[i];
+        //     }
+        //   } 
+        // } else {
+        //   text = data.message || "";
+        // }
+        
+        console.log("=======Data from FastAPI:=========", data.message);
+        
+        return NextResponse.json({
+            success: true,
+            response: data.message,
+            threadId: threadId || generateThreadId(),
+        });
+    } catch (error: any) {
+        clearTimeout(timeoutId); // Clear timeout on error
+        
+        console.error('Error calling agent:', error);
+        
+        // Handle specific timeout errors
+        if (error.name === 'AbortError') {
+            return NextResponse.json(
+                { 
+                    error: 'Request timeout - Agent took too long to respond. Please try again.',
+                    success: false 
+                },
+                { status: 504 }
+            );
+        }
+        
+        // Handle other errors
+        return NextResponse.json(
+            { 
+                error: error.message || 'Failed to process request',
+                success: false 
+            },
+            { status: 500 }
+        );
+    }
 }

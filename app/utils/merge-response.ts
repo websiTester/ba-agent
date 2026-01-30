@@ -1,5 +1,9 @@
 // --- HÀM XỬ LÝ ---
 export function mergeData(oldList: any, newList:any) {
+
+  
+  console.log(`Old response: ${oldList.length}`);
+  console.log(`New response: ${newList.length}`);
   // 1. Tạo Map từ dữ liệu cũ để truy xuất nhanh theo agent_source
   // Map sẽ có dạng: { 1 => {object_1}, 2 => {object_2} }
   const dataMap = new Map(oldList.map((item:any) => [item.agent_source, item]));

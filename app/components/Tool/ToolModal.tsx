@@ -1,9 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { X, Save, Box, Bot, FileText, Settings, Terminal, Loader2, Trash2, Plus } from 'lucide-react';
+import { X, Save, Settings, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useAppState } from '@/app/store';
-import { createMention } from '@/app/db/tools';
-import { iso } from 'zod/v4';
 
 
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://127.0.0.1:3001"
@@ -20,9 +18,12 @@ interface ToolModalProps {
 }
 
 export default function ToolModal({ setSelectedTool, selectedTool, isOpen = true, setIsOpen, setRefreshTool, refreshTool }: ToolModalProps) {
-    // State quản lý dữ liệu form
+    // State management
     const phaseId = useAppState(state => state.activePhase);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
+    const [errorMessage, setErrorMessage] = useState('');
+    const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
     const [formData, setFormData] = useState({
       phaseId: phaseId || '',
@@ -37,7 +38,7 @@ export default function ToolModal({ setSelectedTool, selectedTool, isOpen = true
       field: {} // Field sẽ được cập nhật tự động từ dynamicParams
     });
 
-    // State quản lý danh sách các tham số động cho Tool Field
+    // Dynamic parameters state (currently unused but kept for future functionality)
     const [dynamicParams, setDynamicParams] = useState([
       { id: '1', key: 'user_input', description: 'Yêu cầu đầu vào của người dùng cần được phân tích' },
       { id: '2', key: 'phase_id', description: 'The phase ID to get the relevant context' }
@@ -53,10 +54,13 @@ export default function ToolModal({ setSelectedTool, selectedTool, isOpen = true
         agentToolDescription: '',
         agentInstruction: '',
         qa_system_prompt: '',
-        model: 'gemini-2.5-flash', // Giá trị mặc định
-        field: {} // Field sẽ được cập nhật tự động từ dynamicParams
+        model: 'gemini-2.5-flash',
+        field: {}
       });
-    }
+      setValidationErrors({});
+      setSubmitStatus('idle');
+      setErrorMessage('');
+    };
 
     // Update form data when phaseId changes
     useEffect(() => {
@@ -67,48 +71,22 @@ export default function ToolModal({ setSelectedTool, selectedTool, isOpen = true
     }, [phaseId]);
 
 
-    // Tự động đồng bộ dynamicParams vào formData.field
+    // Auto-sync dynamicParams to formData.field
   useEffect(() => {
-
-    //Convert từ mảng sang Object Dictionary chứa key-value để gửi đi API
     const fieldObj = dynamicParams.reduce((acc: any, param) => {
-      // Chỉ đưa vào object nếu key không rỗng
       if (param.key.trim()) {
         acc[param.key.trim()] = param.description;
       }
       return acc;
-    }, {}); // <--- {} là giá trị khởi tạo ban đầu của acc
+    }, {});
 
-    console.log("fieldObj: "+fieldObj.toString());
     setFormData(prev => ({
       ...prev,
       field: fieldObj
     }));
   }, [dynamicParams]);
 
-
-  // Thay đổi Key hoặc Value của một tham số
-  const handleParamChange = (id:any, field:any, newValue:any) => {
-    setDynamicParams(prev => prev.map(p => 
-      p.id === id ? { ...p, [field]: newValue } : p
-    ));
-  };
-
-  // Thêm tham số mới
-  const addParam = () => {
-    const newId = Date.now().toString();
-    setDynamicParams(prev => [
-      ...prev,
-      { id: newId, key: '', description: '' }
-    ]);
-  };
-
-  // Xóa tham số
-  const removeParam = (id:any) => {
-    setDynamicParams(prev => prev.filter(p => p.id !== id));
-  };
-
-  // Fill form data with Selected Tool
+  // Fill form data with selected tool
    useEffect(() => {
      if(isOpen){
       if(selectedTool!=null){
@@ -121,338 +99,391 @@ export default function ToolModal({ setSelectedTool, selectedTool, isOpen = true
          agentToolDescription: selectedTool.agentToolDescription,
          agentInstruction: selectedTool.agentInstruction,
          qa_system_prompt: selectedTool.qa_system_prompt,
-         model: selectedTool.model, // Giá trị mặc định
+         model: selectedTool.model,
          field: selectedTool.field || {}
         }
         
         setFormData(tool);
 
-      // 2. Map object "field" sang mảng "dynamicParams" để hiển thị lên giao diện
+      // Map object "field" to "dynamicParams" array for UI display
       if (selectedTool.field && typeof selectedTool.field === 'object') {
         const entries = Object.entries(selectedTool.field);
         
         if (entries.length > 0) {
           const loadedParams = entries.map(([key, value], index) => ({
-            id: `loaded-${index}-${Date.now()}`, // Tạo ID unique
+            id: `loaded-${index}-${Date.now()}`,
             key: key,
-            description: String(value) || '' // UPDATE: Chuyển null/undefined thành string rỗng và gán vào description
+            description: String(value) || ''
           }));
           setDynamicParams(loadedParams);
         } else {
-          // Nếu field rỗng, reset về mặc định
-           setDynamicParams([{ id: 'default-1', key: '', description: '' }]); // UPDATE: description
+           setDynamicParams([{ id: 'default-1', key: '', description: '' }]);
         }
       }
     }
      } 
-   }, [isOpen])
+   }, [isOpen, selectedTool, phaseId])
    
   
-    // Hàm xử lý thay đổi input
+    // Handle input changes with validation
     const handleChange = (e: any) => {
       const { name, value } = e.target;
-      console.log(name, value);
-      // Xử lý nested object "tool"
       
-        setFormData(prev => ({
-          ...prev,
-          [name]: value
-        }));
-      
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+
+      // Clear validation error for this field
+      if (validationErrors[name]) {
+        setValidationErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors[name];
+          return newErrors;
+        });
+      }
+    };
+
+    // Form validation
+    const validateForm = () => {
+      const errors: Record<string, string> = {};
+
+      if (!formData.toolName.trim()) {
+        errors.toolName = 'Tool name is required';
+      }
+
+      if (!formData.toolDescription.trim()) {
+        errors.toolDescription = 'Tool description is required';
+      }
+
+      if (!formData.agentInstruction.trim()) {
+        errors.agentInstruction = 'Agent instruction is required';
+      }
+
+      setValidationErrors(errors);
+      return Object.keys(errors).length === 0;
     };
   
     const handleSubmit = async (e: any) => {
       e.preventDefault();
-      setIsSubmitting(true);
-
-      console.log("aupdatedApiUrl: ", updateApiUrl);
-    if(selectedTool != null){
-      const result = await fetch(`${updateApiUrl}/${selectedTool._id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-      const data = await result.json();
-      console.log("data get from updated API: ", data);
-    } else {
-      const result = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-      const data = await result.json();
-      console.log("data get from create_tool: ", data);
-    }
       
-      setIsSubmitting(false);
-      setIsOpen(false);
-      setSelectedTool(null);
-      resetFormData();
-      setRefreshTool(refreshTool + 1);
+      // Validate form
+      if (!validateForm()) {
+        setSubmitStatus('error');
+        setErrorMessage('Please fill in all required fields');
+        return;
+      }
+
+      setIsSubmitting(true);
+      setSubmitStatus('idle');
+      setErrorMessage('');
+
+      try {
+        let result;
+        
+        if(selectedTool != null){
+          result = await fetch(`${updateApiUrl}/${selectedTool._id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData),
+          });
+        } else {
+          result = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData),
+          });
+        }
+
+        if (!result.ok) {
+          throw new Error('Failed to save configuration');
+        }
+
+        const data = await result.json();
+        console.log("API response:", data);
+        
+        setSubmitStatus('success');
+        
+        // Close modal after short delay to show success state
+        setTimeout(() => {
+          setIsOpen(false);
+          setSelectedTool(null);
+          resetFormData();
+          setRefreshTool(refreshTool + 1);
+        }, 800);
+        
+      } catch (error) {
+        console.error('Submit error:', error);
+        setSubmitStatus('error');
+        setErrorMessage(error instanceof Error ? error.message : 'An error occurred while saving');
+      } finally {
+        setIsSubmitting(false);
+      }
     };
   
-    // Nếu modal không mở thì không render gì cả
     if (!isOpen) return null;
   
     return (
-      // Overlay backdrop
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 transition-all duration-300">
-        
+      <div 
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) {
+            setSelectedTool(null);
+            resetFormData();
+            setIsOpen(false);
+          }
+        }}
+      >
         {/* Modal Container */}
-        <div className="w-full max-w-4xl bg-white border border-gray-200 rounded-xl shadow-2xl flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200">
+        <div className="w-full max-w-4xl bg-white rounded-xl shadow-xl flex flex-col max-h-[90vh] overflow-hidden">
           
-          {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-orange-50">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-orange-50 rounded-lg border border-orange-100">
-                <Settings className="w-5 h-5 text-orange-500" />
+          {/* Simple Header */}
+          <div className="px-6 py-4 border-b border-orange-100 bg-orange-50/30">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-orange-100/50 rounded-lg">
+                  <Settings className="w-5 h-5 text-orange-600" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-800">
+                    {selectedTool ? 'Edit Tool' : 'Create Tool'}
+                  </h2>
+                  <p className="text-xs text-gray-500 mt-0.5">Configure AI tool settings</p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-lg font-bold text-gray-800">Configure Tool & Agent</h2>
-              </div>
+              <button 
+                onClick={() => {
+                  setSelectedTool(null);
+                  resetFormData();
+                  setIsOpen(false);
+                }}
+                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                aria-label="Close modal"
+              >
+                <X size={18} />
+              </button>
             </div>
-            <button 
-              onClick={() => {
-                setSelectedTool(null);
-                resetFormData();
-                setIsOpen(false)
-              }}
-              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <X size={20} />
-            </button>
+
+            {/* Status Messages */}
+            {submitStatus === 'error' && errorMessage && (
+              <div className="mt-3 p-2.5 bg-red-50 border border-red-100 rounded-lg flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-xs font-medium text-red-700">{errorMessage}</p>
+                  {Object.keys(validationErrors).length > 0 && (
+                    <ul className="mt-1 text-xs text-red-600 list-disc list-inside">
+                      {Object.values(validationErrors).map((error, idx) => (
+                        <li key={idx}>{error}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {submitStatus === 'success' && (
+              <div className="mt-3 p-2.5 bg-green-50 border border-green-100 rounded-lg flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-green-600" />
+                <p className="text-xs font-medium text-green-700">Saved successfully!</p>
+              </div>
+            )}
           </div>
   
           {/* Body - Scrollable */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
-            <form id="tool-form" onSubmit={handleSubmit} className="space-y-6">
+          <div className="flex-1 overflow-y-auto custom-scrollbar">
+            <form id="tool-form" onSubmit={handleSubmit} className="p-5 space-y-6">
               
               {/* Section 1: Tool Information */}
               <div className="space-y-4">
-                <h3 className="text-sm font-bold text-orange-600 uppercase tracking-wider flex items-center gap-2">
-                  <Box size={14} /> Tool Information
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-5 bg-orange-400 rounded-full"></div>
+                  <h3 className="text-sm font-semibold text-gray-700">Tool Information</h3>
+                </div>
+                
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {/* Tool Name */}
                   <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-gray-700">Tool Name</label>
+                    <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
+                      Tool Name <span className="text-orange-500">*</span>
+                    </label>
                     <input
                       type="text"
                       name="toolName"
                       value={formData.toolName}
                       onChange={handleChange}
                       placeholder="e.g. DataAnalyzer"
-                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all placeholder:text-gray-400 shadow-sm"
+                      className={`w-full bg-white border ${validationErrors.toolName ? 'border-red-300 focus:border-red-400' : 'border-gray-200 focus:border-orange-300'} text-gray-800 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 ${validationErrors.toolName ? 'focus:ring-red-100' : 'focus:ring-orange-100'} transition-all placeholder:text-gray-400`}
+                      aria-invalid={!!validationErrors.toolName}
+                      aria-describedby={validationErrors.toolName ? 'toolName-error' : undefined}
                     />
+                    {validationErrors.toolName && (
+                      <p id="toolName-error" className="text-xs text-red-600 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        {validationErrors.toolName}
+                      </p>
+                    )}
                   </div>
+
                   {/* Model */}
                   <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-gray-700">Model</label>
-                    <select
-                      name="model"
-                      value={formData.model}
-                      onChange={handleChange}
-                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all cursor-pointer shadow-sm"
-                    >
-                      <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-                      <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</option>
-                      <option value="gemini-3-flash">Gemini 3 Flash</option>
-                    </select>
+                    <label className="text-xs font-medium text-gray-600">AI Model</label>
+                    <div className="relative">
+                      <select
+                        name="model"
+                        value={formData.model}
+                        onChange={handleChange}
+                        className="w-full bg-white border border-gray-200 text-gray-800 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-300 transition-all cursor-pointer appearance-none"
+                      >
+                        <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                        <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</option>
+                        <option value="gemini-3-flash-preview">Gemini 3 Flash Preview</option>
+                      </select>
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
                   </div>
+
                   {/* Tool Description - Full Width */}
-                  <div className="space-y-1.5 md:col-span-2">
-                    <label className="text-sm font-semibold text-gray-700">Tool Description</label>
+                  <div className="space-y-1.5 lg:col-span-2">
+                    <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
+                      Tool Description <span className="text-orange-500">*</span>
+                    </label>
                     <textarea
                       name="toolDescription"
                       value={formData.toolDescription}
                       onChange={handleChange}
-                      rows={2}
-                      placeholder="Mô tả chức năng của tool này..."
-                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all placeholder:text-gray-400 resize-none shadow-sm"
+                      rows={3}
+                      placeholder="Describe what this tool does..."
+                      className={`w-full bg-white border ${validationErrors.toolDescription ? 'border-red-300 focus:border-red-400' : 'border-gray-200 focus:border-orange-300'} text-gray-800 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 ${validationErrors.toolDescription ? 'focus:ring-red-100' : 'focus:ring-orange-100'} transition-all placeholder:text-gray-400 resize-none`}
+                      aria-invalid={!!validationErrors.toolDescription}
+                      aria-describedby={validationErrors.toolDescription ? 'toolDescription-error' : undefined}
                     />
+                    {validationErrors.toolDescription && (
+                      <p id="toolDescription-error" className="text-xs text-red-600 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        {validationErrors.toolDescription}
+                      </p>
+                    )}
                   </div>
 
-                  {/* Tool Description - Full Width */}
-                  <div className="space-y-1.5 md:col-span-2">
-                    <label className="text-sm font-semibold text-gray-700">Tool Prompt</label>
+                  {/* Tool Prompt - Full Width */}
+                  <div className="space-y-1.5 lg:col-span-2">
+                    <label className="text-xs font-medium text-gray-600 flex items-center justify-between">
+                      <span>Tool Prompt</span>
+                      <span className="text-xs text-gray-400 font-normal">Optional</span>
+                    </label>
                     <textarea
                       name="toolPrompt"
                       value={formData.toolPrompt}
                       onChange={handleChange}
-                      rows={2}
-                      placeholder="Prompt này sẽ tự động được áp dụng khi sử dụng tool"
-                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all placeholder:text-gray-400 resize-none shadow-sm"
+                      rows={3}
+                      placeholder="System prompt for this tool..."
+                      className="w-full bg-white border border-gray-200 text-gray-800 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-300 transition-all placeholder:text-gray-400 resize-none"
                     />
                   </div>
                 </div>
               </div>
   
-              <div className="h-px bg-gray-100 w-full my-4"></div>
+              {/* Simple Divider */}
+              <div className="border-t border-gray-100"></div>
   
               {/* Section 2: Agent Configuration */}
               <div className="space-y-4">
-                <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
-                  <Bot size={14} className="text-orange-500" /> Agent Configuration
-                </h3>
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-5 bg-orange-400 rounded-full"></div>
+                  <h3 className="text-sm font-semibold text-gray-700">Agent Configuration</h3>
+                </div>
                 
-                {/* Agent Name */}
                 <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-gray-700">Agent Name</label>
-                  <input
-                    type="text"
-                    name="agentToolName"
-                    value={formData.agentToolName}
-                    onChange={handleChange}
-                    placeholder="e.g. Senior Researcher"
-                    className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all placeholder:text-gray-400 shadow-sm"
-                  />
-                </div>
-                {/* Agent Name */}
-                <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-gray-700">Agent Description</label>
-                  <input
-                    type="text"
-                    name="agentToolDescription"
-                    value={formData.agentToolDescription}
-                    onChange={handleChange}
-                    placeholder="e.g. Agent này chịu trách nhiệm phân tích dữ liệu và cung cấp các giải pháp"
-                    className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all placeholder:text-gray-400 shadow-sm"
-                  />
-                </div>
-  
-                {/* Agent Instruction & QA System Prompt Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-gray-700 flex justify-between">
-                      Agent Instruction
-                      <span className="text-xs text-gray-400 font-normal">System behavior</span>
-                    </label>
+                  <label className="text-xs font-medium text-gray-600 flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      Agent Instruction <span className="text-orange-500">*</span>
+                    </span>
+                    <span className="text-xs text-gray-400">{formData.agentInstruction.length} chars</span>
+                  </label>
+                  <div className="relative">
                     <textarea
                       name="agentInstruction"
                       value={formData.agentInstruction}
                       onChange={handleChange}
-                      rows={8}
-                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all placeholder:text-gray-400 custom-scrollbar resize-none shadow-sm"
-                      placeholder="Bạn là một trợ lý ảo hữu ích..."
+                      rows={16}
+                      className={`w-full bg-white border ${validationErrors.agentInstruction ? 'border-red-300 focus:border-red-400' : 'border-gray-200 focus:border-orange-300'} text-gray-800 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 ${validationErrors.agentInstruction ? 'focus:ring-red-100' : 'focus:ring-orange-100'} transition-all placeholder:text-gray-400 custom-scrollbar resize-none leading-relaxed`}
+                      placeholder="You are a helpful AI assistant..."
+                      aria-invalid={!!validationErrors.agentInstruction}
+                      aria-describedby={validationErrors.agentInstruction ? 'agentInstruction-error' : undefined}
+                      style={{ fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif' }}
                     />
                   </div>
-  
-                  {/* <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-gray-700 flex justify-between">
-                      QA System Prompt
-                      <span className="text-xs text-gray-400 font-normal">Context prompt</span>
-                    </label>
-                    <textarea
-                      name="qa_system_prompt"
-                      value={formData.qa_system_prompt}
-                      onChange={handleChange}
-                      rows={4}
-                      className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all placeholder:text-gray-400 custom-scrollbar resize-none shadow-sm"
-                      placeholder="Dữ liệu ngữ cảnh cho QA..."
-                    />
-                  </div> */}
+                  {validationErrors.agentInstruction && (
+                    <p id="agentInstruction-error" className="text-xs text-red-600 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      {validationErrors.agentInstruction}
+                    </p>
+                  )}
                 </div>
               </div>
-  
-              <div className="h-px bg-gray-100 w-full my-4"></div>
-  
-              {/* Section 3: Tool Field Parameters (Dynamic) */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
-                  <Terminal size={14} className="text-orange-500" /> Tool Field Parameters
-                </h3>
-                <button
-                  type="button"
-                  onClick={addParam}
-                  className="text-xs font-semibold text-orange-600 hover:text-orange-700 flex items-center gap-1 px-2 py-1 bg-orange-50 hover:bg-orange-100 rounded transition-colors"
-                >
-                  <Plus size={14} /> Add Parameter
-                </button>
-              </div>
-
-              <div className="bg-orange-50/50 rounded-lg p-4 border border-orange-100 space-y-3">
-                {dynamicParams.length === 0 && (
-                   <p className="text-sm text-gray-400 text-center py-2 italic">Chưa có tham số nào. Nhấn Add Parameter để thêm.</p>
-                )}
-                
-                {dynamicParams.map((param, index) => (
-                  <div key={param.id} className="flex gap-3 items-start animate-in fade-in slide-in-from-top-1 duration-200">
-                    <div className="flex-1 space-y-1">
-                      {index === 0 && <label className="text-xs font-semibold text-gray-500 uppercase">Parameter Name</label>}
-                      <input
-                        type="text"
-                        value={param.key}
-                        onChange={(e) => handleParamChange(param.id, 'key', e.target.value)}
-                        placeholder="Key (e.g. user_input)"
-                        className="w-full bg-white border border-gray-300 text-gray-900 rounded-md px-3 py-2 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all text-sm shadow-sm font-mono"
-                      />
-                    </div>
-                    
-                    <div className="flex-[2] space-y-1">
-                      {index === 0 && <label className="text-xs font-semibold text-gray-500 uppercase">Description</label>}
-                      <input
-                        type="text"
-                        value={param.description}
-                        onChange={(e) => handleParamChange(param.id, 'description', e.target.value)}
-                        placeholder="Description..."
-                        className="w-full bg-white border border-gray-300 text-gray-900 rounded-md px-3 py-2 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all text-sm shadow-sm"
-                      />
-                    </div>
-
-                    <div className={index === 0 ? "pt-5" : ""}>
-                        <button
-                        type="button"
-                        onClick={() => removeParam(param.id)}
-                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors mt-[2px]"
-                        title="Remove Parameter"
-                        >
-                        <Trash2 size={16} />
-                        </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
   
             </form>
           </div>
   
-          {/* Footer */}
-          <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3 rounded-b-xl">
+          {/* Simple Footer */}
+          <div className="px-5 py-3 border-t border-gray-100 bg-gray-50/50 flex items-center justify-end gap-3">
             <button
+              type="button"
               onClick={() => {
                 resetFormData();
                 setSelectedTool(null);
-                setIsOpen(false)
+                setIsOpen(false);
               }}
-              className="px-5 py-2.5 text-sm font-semibold text-gray-600 bg-white hover:bg-gray-100 hover:text-gray-800 rounded-lg transition-colors border border-gray-200 shadow-sm"
+              disabled={isSubmitting}
+              className="px-4 py-2 text-sm font-medium text-gray-600 bg-white hover:bg-gray-50 rounded-lg transition-colors border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancel
             </button>
             <button
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="px-5 py-2.5 text-sm font-semibold text-white bg-orange-500 hover:bg-orange-600 rounded-lg transition-all shadow-lg shadow-orange-500/30 flex items-center gap-2"
+              type="submit"
+              form="tool-form"
+              disabled={isSubmitting || submitStatus === 'success'}
+              className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                submitStatus === 'success' 
+                  ? 'bg-green-500 hover:bg-green-600' 
+                  : 'bg-orange-400 hover:bg-orange-500'
+              }`}
             >
-              {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-              {isSubmitting ? 'Saving...' : 'Save Configuration'}
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  <span>Saving...</span>
+                </>
+              ) : submitStatus === 'success' ? (
+                <>
+                  <CheckCircle2 size={16} />
+                  <span>Saved!</span>
+                </>
+              ) : (
+                <>
+                  <Save size={16} />
+                  <span>{selectedTool ? 'Update' : 'Create'}</span>
+                </>
+              )}
             </button>
           </div>
         </div>
   
-        {/* Styles cho custom scrollbar */}
+        {/* Custom scrollbar styles */}
         <style jsx global>{`
           .custom-scrollbar::-webkit-scrollbar {
             width: 6px;
-            height: 6px;
           }
           .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f3f4f6;
+            background: #fafafa;
           }
           .custom-scrollbar::-webkit-scrollbar-thumb {
             background: #d1d5db;

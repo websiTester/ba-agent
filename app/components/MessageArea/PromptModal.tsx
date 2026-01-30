@@ -14,9 +14,9 @@ const PROMPT_TEMPLATES = [
   },
   {
     id: 'frs',
-    label: 'Làm tài liệu FRS',
+    label: 'Làm tài liệu Usecase Specification',
     phaseId:'documentation' as PhaseId,
-    content: 'Dựa vào các thông tin ngữ cảnh (Context), hãy soạn thảo nội dung tài liệu Đặc tả Yêu cầu Chức năng (FRS). Nội dung cần bao gồm: Mô tả chi tiết chức năng, Điều kiện tiên quyết, Luồng sự kiện chính (Main Flow), và các Luồng thay thế/Ngoại lệ (Alternative/Exception Flows).'
+    content: 'Dựa vào các thông tin ngữ cảnh (Context), hãy tạo usecase specification table cho requirement.'
   },
   {
     id: 'uiux',
@@ -38,7 +38,6 @@ export default function PromptModal({processPromptModalRequest}:any){
   const [prompt, setPrompt] = useState('');
   const initialContextData = useAppState(state => state.initialContextData);
   const setActivePhase = useAppState(state => state.setActivePhase);
-  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
 
   const isOpenPromptModal = useAppState(state => state.isOpenPromptModal);
   const setIsOpenPromptModal = useAppState(state => state.setIsOpenPromptModal);
@@ -130,59 +129,61 @@ export default function PromptModal({processPromptModalRequest}:any){
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
       {/* Overlay / Backdrop */}
       <div 
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
+        className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity" 
         onClick={() => setIsOpenPromptModal(false)}
       ></div>
 
       {/* Modal Content */}
-      <div className="relative w-full max-w-3xl max-h-[90vh] flex flex-col bg-white rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-2xl max-h-[88vh] flex flex-col bg-white rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-              <Edit3 className="w-5 h-5 text-indigo-600" />
+        <div className="flex items-center justify-between px-6 py-4 border-b border-orange-100/50">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-gradient-to-br from-orange-50 to-orange-100/50 rounded-lg">
+              <Edit3 className="w-4 h-4 text-orange-500" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-gray-800">
                 Phân tích từng yêu cầu
-            </h3>
-            <p className="text-sm text-gray-500 mt-1">Điền thông tin ngữ cảnh và nội dung prompt của bạn.</p>
+              </h3>
+              <p className="text-xs text-gray-500 mt-0.5">Điền thông tin ngữ cảnh và nội dung prompt</p>
+            </div>
           </div>
           <button 
             onClick={() => setIsOpenPromptModal(false)}
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+            className="p-1.5 hover:bg-orange-50 rounded-lg transition-colors group"
+            aria-label="Close"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
           </button>
         </div>
 
         {/* Body - Scrollable */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-8">
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
           
           {/* Section 1: Main Prompt Textarea */}
-          <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-2">
-              <h4 className="text-sm font-medium text-gray-900 uppercase tracking-wider flex items-center gap-2">
-                <FileText className="w-4 h-4" />
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5 text-orange-500" />
                 Yêu cầu
-              </h4>
+              </label>
               
               {/* Option Menu - Chọn Template */}
-              <div className="relative group">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-amber-500" />
-                  <select
-                    value={templateId ?? PROMPT_TEMPLATES[0].id}
-                    onChange={handleTemplateChange}
-                    className="appearance-none bg-amber-50 border border-amber-200 text-gray-700 text-sm rounded-lg focus:ring-amber-500 focus:border-amber-500 block w-full pl-3 pr-8 py-1.5 cursor-pointer hover:bg-amber-100 transition-colors outline-none font-medium"
-                  >
-                    
-                    {PROMPT_TEMPLATES.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.label}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-500 pointer-events-none" />
-                </div>
+              <div className="relative">
+                <select
+                  value={templateId ?? PROMPT_TEMPLATES[0].id}
+                  onChange={handleTemplateChange}
+                  className="appearance-none bg-gradient-to-r from-orange-50 to-orange-100/50 border border-orange-200/60 text-gray-700 text-xs rounded-lg focus:ring-2 focus:ring-orange-300/50 focus:border-orange-300 pl-8 pr-8 py-1.5 cursor-pointer hover:border-orange-300/70 transition-all outline-none font-medium"
+                >
+                  {PROMPT_TEMPLATES.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+                <Sparkles className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-orange-500 pointer-events-none" />
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-orange-500 pointer-events-none" />
               </div>
             </div>
 
@@ -190,17 +191,16 @@ export default function PromptModal({processPromptModalRequest}:any){
               <label htmlFor="main-prompt" className="sr-only">Prompt</label>
               <textarea
                 id="main-prompt"
-                rows={6}
+                rows={5}
                 placeholder="Nhập yêu cầu của bạn cho AI tại đây hoặc chọn mẫu gợi ý ở trên..."
-                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl shadow-sm text-base text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all resize-y"
+                className="w-full px-3.5 py-3 bg-orange-50/30 border border-orange-200/50 rounded-xl text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-300/50 focus:border-orange-300 focus:bg-white transition-all resize-y"
                 value={prompt}
                 onChange={(e) => {
                   setPrompt(e.target.value);
-                  // Nếu người dùng tự sửa, reset selection để không gây hiểu nhầm
                   if (setTemplateId) setTemplateId('');
                 }}
               ></textarea>
-              <div className="mt-2 flex justify-end">
+              <div className="mt-1.5 flex justify-end">
                 <span className="text-xs text-gray-400">
                   {prompt.length} ký tự
                 </span>
@@ -209,69 +209,66 @@ export default function PromptModal({processPromptModalRequest}:any){
           </div>
 
           {/* Section 2: Dynamic Context Fields */}
-          <div className="space-y-4">
-            <h4 className="text-sm font-medium text-gray-900 uppercase tracking-wider flex items-center gap-2 border-b pb-2">
-              <Type className="w-4 h-4" />
-              Thông tin requirement
-            </h4>
-            
-            <div className="grid grid-cols-1 gap-5">
-              {Object.keys(contextData).map((key) => {
-                const value = (contextData as any)[key];
-                // Logic đơn giản: Nếu text dài > 60 ký tự thì dùng textarea, ngược lại dùng input
-                const isLongText = typeof value === 'string' && value.length > 60;
-                
-                return (
-                  <div key={key} className="group">
-                    <label 
-                      htmlFor={`field-${key}`}
-                      className="block text-sm font-medium text-gray-700 mb-1.5 group-focus-within:text-indigo-600 transition-colors"
-                    >
-                      {formatLabel(key)}
-                    </label>
-                    {isLongText ? (
-                      <textarea
-                        id={`field-${key}`}
-                        rows={3}
-                        className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all resize-y"
-                        value={value}
-                        onChange={(e) => handleContextChange(key, e.target.value)}
-                      />
-                    ) : (
-                      <input
-                        type="text"
-                        id={`field-${key}`}
-                        className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-                        value={value}
-                        onChange={(e) => handleContextChange(key, e.target.value)}
-                      />
-                    )}
-                  </div>
-                );
-              })}
+          {Object.keys(contextData).length > 0 && (
+            <div className="space-y-3 pt-3 border-t border-orange-100/50">
+              <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
+                <Type className="w-3.5 h-3.5 text-orange-500" />
+                Thông tin requirement
+              </label>
               
-              {Object.keys(contextData).length === 0 && (
-                <p className="text-sm text-gray-400 italic text-center py-4">Không có dữ liệu ngữ cảnh.</p>
-              )}
+              <div className="space-y-3">
+                {Object.keys(contextData).map((key) => {
+                  const value = (contextData as any)[key];
+                  const isLongText = typeof value === 'string' && value.length > 60;
+                  
+                  return (
+                    <div key={key} className="group">
+                      <label 
+                        htmlFor={`field-${key}`}
+                        className="block text-xs font-medium text-gray-600 mb-1.5 group-focus-within:text-orange-600 transition-colors"
+                      >
+                        {formatLabel(key)}
+                      </label>
+                      {isLongText ? (
+                        <textarea
+                          id={`field-${key}`}
+                          rows={3}
+                          className="w-full px-3 py-2 bg-white border border-orange-200/50 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-300/50 focus:border-orange-300 transition-all resize-y"
+                          value={value}
+                          onChange={(e) => handleContextChange(key, e.target.value)}
+                        />
+                      ) : (
+                        <input
+                          type="text"
+                          id={`field-${key}`}
+                          className="w-full px-3 py-2 bg-white border border-orange-200/50 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-300/50 focus:border-orange-300 transition-all"
+                          value={value}
+                          onChange={(e) => handleContextChange(key, e.target.value)}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-end gap-3">
+        <div className="px-6 py-4 border-t border-orange-100/50 bg-gradient-to-b from-white to-orange-50/20 flex items-center justify-end gap-2.5">
           <button
             onClick={() => setIsOpenPromptModal(false)}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-200 transition-colors"
+            className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
           >
             Hủy bỏ
           </button>
           <button
             onClick={handleSubmit}
             disabled={!prompt.trim()}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+            className="flex items-center gap-1.5 px-5 py-2 text-sm font-medium text-white bg-gradient-to-r from-orange-400 to-orange-500 rounded-lg hover:from-orange-500 hover:to-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-300/50 disabled:from-gray-300 disabled:to-gray-300 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow"
           >
-            <Save className="w-4 h-4" />
+            <Save className="w-3.5 h-3.5" />
             Xử lý Prompt
           </button>
         </div>

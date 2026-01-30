@@ -2,107 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import plantumlEncoder from 'plantuml-encoder';
-import { set, string } from 'zod/v4';
 import { Code2, EyeOff } from 'lucide-react';
-
-// --- 1. MOCK DATA: Dữ liệu mẫu PlantUML chuẩn cho 3 loại ---
-const MOCK_DATA = {
-    usecase: `@startuml
-left to right direction
-skinparam packageStyle rectangle
-
-actor "Khách hàng" as user
-actor "Nhân viên ngân hàng" as admin
-
-rectangle "Hệ thống Internet Banking" {
-  usecase "Đăng nhập" as UC1
-  usecase "Kiểm tra số dư" as UC2
-  usecase "Chuyển tiền" as UC3
-  usecase "Thanh toán hóa đơn" as UC4
-  usecase "Quản lý người dùng" as UC5
-}
-
-user --> UC1
-user --> UC2
-user --> UC3
-user --> UC4
-
-admin --> UC1
-admin --> UC5
-
-UC3 ..> UC1 : <<include>>
-UC4 ..> UC2 : <<include>>
-@enduml`,
-
-    sequence: `@startuml
-autonumber
-
-participant "User" as U
-participant "Frontend (App)" as FE
-participant "Auth Service" as Auth
-database "Database" as DB
-
-U -> FE: Nhập Username/Password
-activate FE
-
-FE -> Auth: POST /api/login
-activate Auth
-
-Auth -> DB: Tìm kiếm User theo Username
-activate DB
-DB --> Auth: Trả về thông tin User (Hash Pass)
-deactivate DB
-
-Auth -> Auth: So sánh Hash Password
-
-alt Mật khẩu đúng
-    Auth --> FE: 200 OK + JWT Token
-else Mật khẩu sai
-    Auth --> FE: 401 Unauthorized
-end
-
-deactivate Auth
-
-FE --> U: Chuyển hướng vào trang chủ
-deactivate FE
-@enduml`,
-
-    class: `@startuml
-class User {
-  - String id
-  - String username
-  - String password
-  + login()
-  + logout()
-}
-
-class Customer {
-  - String email
-  - String phone
-  + viewBalance()
-}
-
-class Admin {
-  - String role
-  + manageUser()
-}
-
-class Account {
-  - String accountNumber
-  - Double balance
-  + deposit(amount)
-  + withdraw(amount)
-}
-
-User <|-- Customer
-User <|-- Admin
-
-Customer "1" *-- "many" Account : sở hữu
-@enduml`
-};
-
-type DiagramType = 'usecase' | 'sequence' | 'class';
-
 
 interface PlantUMLCompoentProps {
     aiResponse: any;
@@ -116,16 +16,11 @@ export default function PlantUMLCompoent({ aiResponse }: PlantUMLCompoentProps) 
     const [codeList, setCodeList] = useState<string[]>([]);
     const [isCodeEdited, setIsCodeEdited] = useState(false);
 
-    // --- 2. LOGIC RENDER: Encode text thành URL ảnh ---
+    // --- LOGIC RENDER: Encode text thành URL ảnh ---
     useEffect(() => {
         try {
-            // Encode đoạn code PlantUML
             const encoded = plantumlEncoder.encode(code);
-
-            // Tạo URL đến server public của PlantUML (Hoặc thay bằng server riêng của bạn)
-            // Dùng SVG để ảnh sắc nét khi zoom
             const url = `http://www.plantuml.com/plantuml/svg/${encoded}`;
-
             setImageUrl(url);
         } catch (error) {
             console.error("Lỗi encode:", error);
@@ -144,20 +39,47 @@ export default function PlantUMLCompoent({ aiResponse }: PlantUMLCompoentProps) 
             setCode(plantUmlCode[0] || '');
         }
     }, [aiResponse]);
-    // Hàm chuyển tab
+
     const handleTabChange = (index: number) => {
         setActiveTab(index);
         setCode(codeList[index]);
     };
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', fontFamily: 'sans-serif' }}>
+        <div className="flex flex-col w-full h-[100vh] border border-orange-100 rounded-xl overflow-hidden shadow-sm bg-white">
 
             {/* HEADER & TABS */}
-            <div style={{ padding: '15px', borderBottom: '1px solid #ddd', background: '#f9f9f9', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <h3 style={{ margin: 0, marginRight: '20px' }}>📊 Diagrams</h3>
-                {
-                    titleList && titleList.map((title, index) => (
+            <div className="flex flex-col gap-3 px-4 py-3 border-b border-orange-100/50 bg-gradient-to-r from-orange-50/30 to-orange-50/50">
+                {/* Row 1: Title + View Code Button */}
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-orange-500"></div>
+                        <h3 className="text-sm font-semibold text-gray-800 m-0">Diagrams</h3>
+                    </div>
+
+                    {/* VIEW CODE BUTTON */}
+                    <button
+                        onClick={() => setIsCodeEdited(!isCodeEdited)}
+                        className={`
+                            flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 shadow-sm border flex-shrink-0
+                            ${isCodeEdited
+                                ? 'bg-gray-800 text-white border-gray-800 hover:bg-gray-700'
+                                : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50 hover:text-gray-900 hover:border-gray-300'
+                            }
+                        `}
+                    >
+                        {isCodeEdited ? (
+                            <EyeOff className="w-3.5 h-3.5" />
+                        ) : (
+                            <Code2 className="w-3.5 h-3.5" />
+                        )}
+                        <span>{isCodeEdited ? 'Hide Code' : 'View Code'}</span>
+                    </button>
+                </div>
+
+                {/* Row 2: Diagram Tabs (2 per row) */}
+                <div className="grid grid-cols-2 gap-2">
+                    {titleList && titleList.map((title, index) => (
                         <button
                             key={index}
                             onClick={() => handleTabChange(index)}
@@ -165,75 +87,38 @@ export default function PlantUMLCompoent({ aiResponse }: PlantUMLCompoentProps) 
                         >
                             {title}
                         </button>
-                    ))
-                }
-
-                {/* --- BUTTON VIEW CODE (Sử dụng Lucide Icon + Tailwind) --- */}
-<button
-    onClick={() => setIsCodeEdited(!isCodeEdited)}
-    className={`
-        ml-auto flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 shadow-sm border
-        ${isCodeEdited
-            ? 'bg-gray-800 text-white border-gray-800 hover:bg-gray-700' // Active: Dark mode
-            : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50 hover:text-gray-900 hover:border-gray-300' // Inactive: Light mode
-        }
-    `}
->
-    {isCodeEdited ? (
-        <EyeOff className="w-4 h-4" /> // Icon khi đang mở code (để bấm vào thì ẩn đi)
-    ) : (
-        <Code2 className="w-4 h-4" />  // Icon khi đang đóng code (để bấm vào thì mở ra)
-    )}
-    
-    <span>{isCodeEdited ? 'Hide Code' : 'View Code'}</span>
-</button>
-
+                    ))}
+                </div>
             </div>
 
             {/* MAIN CONTENT: SPLIT VIEW */}
-            <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+            <div className="flex flex-1 overflow-hidden min-h-0">
 
-                {/* CỘT TRÁI: CODE EDITOR (Mô phỏng AI Output) */}
-                {
-                    isCodeEdited && (
-<div style={{ width: '40%', display: 'flex', flexDirection: 'column', borderRight: '1px solid #ddd' }}>
-          <div style={{ padding: '10px', background: '#eee', fontSize: '12px', fontWeight: 'bold', borderBottom: '1px solid #ddd' }}>
-            🛠️ PlantUML Code (AI Generated - Editable)
-          </div>
-          <textarea
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            style={{ 
-              flex: 1, 
-              width: '100%', 
-              padding: '15px', 
-              fontFamily: 'monospace', 
-              fontSize: '14px', 
-              border: 'none', 
-              outline: 'none', 
-              resize: 'none',
-              backgroundColor: '#282c34',
-              color: '#abb2bf'
-            }}
-          />
-        </div>
-
-                    )
-                }
+                {/* CODE EDITOR */}
+                {isCodeEdited && (
+                    <div className="w-2/5 flex flex-col border-r border-orange-100/50">
+                        
+                        <textarea
+                            value={code}
+                            onChange={(e) => setCode(e.target.value)}
+                            className="flex-1 w-full p-3 font-mono text-xs border-none outline-none resize-none bg-gray-900 text-gray-300"
+                        />
+                    </div>
+                )}
                 
-                {/* CỘT PHẢI: DIAGRAM PREVIEW */}
-                <div style={{ width: isCodeEdited ? '60%' : '100%', display: 'flex', flexDirection: 'column', backgroundColor: '#fff' }}>
-
-
-                    <div style={{ flex: 1, overflow: 'auto', padding: '20px', display: 'flex', justifyContent: 'center', alignItems: 'flex-start' }}>
+                {/* DIAGRAM PREVIEW */}
+                <div className={`${isCodeEdited ? 'w-3/5' : 'w-full'} flex flex-col bg-white overflow-hidden`}>
+                    <div className="flex-1 overflow-auto p-5 flex justify-center items-start">
                         {imageUrl ? (
                             <img
                                 src={imageUrl}
                                 alt="PlantUML Diagram"
-                                style={{ maxWidth: '100%', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', border: '1px solid #eee' }}
+                                className="max-w-full h-auto shadow-md border border-gray-200 rounded-lg"
                             />
                         ) : (
-                            <p>Loading diagram...</p>
+                            <div className="flex items-center justify-center py-12">
+                                <p className="text-sm text-gray-400">Loading diagram...</p>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -244,17 +129,20 @@ export default function PlantUMLCompoent({ aiResponse }: PlantUMLCompoentProps) 
 }
 
 const getTabStyle = (isActive: boolean): React.CSSProperties => ({
-    padding: '6px 14px',           // Nhỏ gọn hơn
-    fontSize: '13px',              // Chữ vừa vặn
+    padding: '8px 12px',
+    fontSize: '12px',
     fontFamily: 'inherit',
-    border: isActive ? '1px solid #0070f3' : '1px solid #e5e7eb', // Active: viền xanh, Inactive: viền xám nhạt
-    borderRadius: '6px',           // Bo góc mềm mại
+    border: isActive ? '1px solid #fb923c' : '1px solid #fed7aa',
+    borderRadius: '8px',
     cursor: 'pointer',
-    background: isActive ? '#0070f3' : '#ffffff', // Active: nền xanh, Inactive: nền trắng
-    color: isActive ? '#ffffff' : '#4b5563',      // Active: chữ trắng, Inactive: chữ xám đậm
+    background: isActive ? 'linear-gradient(to right, #fb923c, #f97316)' : '#ffffff',
+    color: isActive ? '#ffffff' : '#6b7280',
     fontWeight: 500,
     transition: 'all 0.2s ease',
     outline: 'none',
-    boxShadow: isActive ? '0 2px 4px rgba(0, 112, 243, 0.2)' : 'none', // Thêm shadow nhẹ khi active
-    whiteSpace: 'nowrap'           // Chống xuống dòng nếu tên dài
+    boxShadow: isActive ? '0 2px 4px rgba(251, 146, 60, 0.2)' : 'none',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    width: '100%'
 });

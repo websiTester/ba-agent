@@ -15,13 +15,15 @@ const PlantUMLRenderer: React.FC<Props> = ({ plantUmlCode }) => {
   // Hoặc server chính chủ: `http://www.plantuml.com/plantuml/svg/${encoded}`
 
   return (
-    <div className="border border-gray-200 rounded p-4 bg-white overflow-auto">
+    <div className="max-w-full max-h-[70vh] border border-orange-100 rounded-xl p-4 bg-gradient-to-br from-white to-orange-50/20 overflow-auto shadow-sm">
       {/* Hiển thị ảnh SVG */}
-      <img 
-        src={imageUrl} 
-        alt="PlantUML Diagram" 
-        style={{ maxWidth: '100%', height: 'auto' }} 
-      />
+      <div className="flex justify-center items-start min-h-[200px]">
+        <img 
+          src={imageUrl} 
+          alt="PlantUML Diagram" 
+          className="max-w-full h-auto rounded-lg shadow-sm border border-orange-100/50"
+        />
+      </div>
     </div>
   );
 };

@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
       mimeType: file.mimeType,
     }));
 
+    console.log(`FILE: ${formattedFiles}`)
     return NextResponse.json(formattedFiles);
   } catch (error) {
     console.error("Error fetching files:", error);

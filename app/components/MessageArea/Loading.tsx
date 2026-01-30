@@ -1,39 +1,40 @@
 // AILoadingCard.tsx
 import React from 'react';
-import { BrainCircuit, Sparkles, Loader2 } from 'lucide-react';
+import { BrainCircuit } from 'lucide-react';
 
-export default function AILoadingCard() {
+interface AILoadingCardProps {
+  message?: string;
+}
+
+export default function AILoadingCard({ message = 'Đang phân tích' }: AILoadingCardProps) {
   return (
-    <div className="relative group">
-      {/* Outer Glow Effect (Hiệu ứng tỏa sáng nhẹ ra xung quanh card) */}
-      <div className="absolute -inset-0.5 bg-gradient-to-r from-orange-300 to-amber-300 rounded-2xl blur opacity-30 group-hover:opacity-60 transition duration-1000"></div>
-      
-      <div className="relative p-8 rounded-2xl bg-white/80 backdrop-blur-xl border border-white/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)] max-w-sm w-80 text-center flex flex-col items-center gap-5">
+    <div className="inline-flex items-center gap-3 px-4 py-3 rounded-xl bg-white border border-gray-200 shadow-sm">
+      {/* Spinner với animation mượt mà */}
+      <div className="relative w-10 h-10 flex items-center justify-center flex-shrink-0">
+        {/* Outer ring - quay chậm */}
+        <div className="absolute inset-0 border-2 border-gray-100 border-t-orange-500 rounded-full animate-spin" 
+             style={{ animationDuration: '1s' }}></div>
         
-        {/* Icon Container with Rings */}
-        <div className="relative w-20 h-20 flex items-center justify-center">
-          {/* Outer Ring Spinning */}
-          <div className="absolute inset-0 border-4 border-orange-100 border-t-orange-500 rounded-full animate-spin"></div>
-          
-          {/* Inner Ring Reverse Spinning */}
-          <div className="absolute inset-2 border-2 border-amber-50 border-b-amber-400 rounded-full animate-spin-reverse"></div>
-          
-          {/* Central Icon */}
-          <div className="bg-gradient-to-br from-orange-50 to-white rounded-full p-3 shadow-sm z-10">
-            <BrainCircuit className="w-8 h-8 text-orange-500" />
-          </div>
+        {/* Icon với pulse tinh tế */}
+        <div className="bg-orange-50 rounded-full p-2">
+          <BrainCircuit className="w-5 h-5 text-orange-500 animate-pulse" 
+                        style={{ animationDuration: '2s' }} />
         </div>
+      </div>
 
-        {/* Text Content */}
-        <div className="space-y-2">
-          
-          
-          {/* Status Message that feels alive */}
-          <div className="flex items-center justify-center gap-2 text-sm text-gray-500 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
-             <span className="animate-pulse">Đang phân tích yêu cầu...</span>
-          </div>
+      {/* Text content - clean & minimal */}
+      <div className="flex flex-col gap-1">
+        <p className="text-sm font-medium text-gray-900">
+          {message}
+        </p>
+        <div className="flex items-center gap-1">
+          <div className="w-1 h-1 bg-orange-500 rounded-full animate-bounce" 
+               style={{ animationDelay: '0ms', animationDuration: '1.4s' }}></div>
+          <div className="w-1 h-1 bg-orange-500 rounded-full animate-bounce" 
+               style={{ animationDelay: '200ms', animationDuration: '1.4s' }}></div>
+          <div className="w-1 h-1 bg-orange-500 rounded-full animate-bounce" 
+               style={{ animationDelay: '400ms', animationDuration: '1.4s' }}></div>
         </div>
-
       </div>
     </div>
   );

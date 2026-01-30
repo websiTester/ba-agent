@@ -1,14 +1,15 @@
 'use client'
 import { useState } from "react";
 import { createPortal } from "react-dom";
+import { useAppState } from "@/app/store";
 
 
 // --- 1. COMPONENT MENU 3 CHẤM (KEBAB MENU) ---
 export const ActionMenuRenderer = (params: any) => {
     const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+    const setSelectedActionItem = useAppState(state => state.setSelectedActionItem);
   
-    if (!params.data || !params.data.id) return null;
-  
+    // Always render the button, even if data is not complete
     const handleOpen = (e: React.MouseEvent<HTMLButtonElement>) => {
       // Lấy toạ độ nút bấm ngay lập tức
       const rect = e.currentTarget.getBoundingClientRect();
@@ -22,9 +23,17 @@ export const ActionMenuRenderer = (params: any) => {
       setMenuPos(null); // Đóng menu
       console.log('Trigger action:', action, 'on row:', params.data);
 
+      // Lưu item được chọn vào AppState
+      setSelectedActionItem({
+        action: action,
+        rowData: params.data
+      });
+
       // Gọi hàm từ context truyền vào
       //Context này được set trong CsvTable component và tự động truyền xuống đây
-      params.context.onTriggerAction && params.context.onTriggerAction(action, params.data);
+      if (params.context && params.context.onTriggerAction) {
+        params.context.onTriggerAction(action, params.data);
+      }
     };
   
     return (
@@ -60,9 +69,12 @@ export const ActionMenuRenderer = (params: any) => {
                 <button onClick={() => handleAction('frs')} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 flex items-center gap-2">
                   <span className="text-xs">📄</span> FSD
                 </button>
-                <button onClick={() => handleAction('uiux')} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-pink-50 flex items-center gap-2">
-                  <span className="text-xs">🎨</span> UI/UX
+
+                {params.data?.HasUI=="true" && (
+                  <button onClick={() => handleAction('uiux')} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-pink-50 flex items-center gap-2">
+                  <span className="text-xs">🎨</span> Đặc tả UI
                 </button>
+                )}
               </div>
             </div>
           </>,

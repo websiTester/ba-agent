@@ -18,7 +18,9 @@ interface AppState{
     setInitialContextData: (data: Record<string, any>) => void;
     templateId: string;
     setTemplateId: (templateId: string) => void;
-    
+    // Selected action item from ActionMenu
+    selectedActionItem: { action: string; rowData: Record<string, any> } | null;
+    setSelectedActionItem: (item: { action: string; rowData: Record<string, any> } | null) => void;
 
 }
 
@@ -38,5 +40,8 @@ export const useAppState = create<AppState>((set) => ({
 
     templateId: 'diagram',
     setTemplateId: (newId: string) => {set({templateId: newId})},
+    // Selected action item from ActionMenu
+    selectedActionItem: null,
+    setSelectedActionItem: (item) => {set({selectedActionItem: item})},
 
 }));
