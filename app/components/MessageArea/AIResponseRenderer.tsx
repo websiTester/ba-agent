@@ -46,6 +46,11 @@ export default function AIResponseRenderer({ handleAIResponse, aiResponse }: any
         });
     }, [responses.length]);
 
+    // Reset activeTab to 0 when phase changes
+    useEffect(() => {
+        setActiveTab(0);
+    }, [phaseId]);
+
     // If no valid responses, show empty state
     if (!responses || responses.length === 0) {
         //return <UseCaseTable/>
@@ -53,6 +58,11 @@ export default function AIResponseRenderer({ handleAIResponse, aiResponse }: any
     }
 
     const currentResponse = responses[activeTab];
+    
+    // Safety check: if currentResponse is undefined, return early
+    if (!currentResponse) {
+        return <div className="p-4 text-gray-500">Loading...</div>;
+    }
     
     // Get available tool names
     const availableTools = responses.map((r: any) => r.agent_source || 'Unknown');

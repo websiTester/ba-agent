@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     
     // Create abort controller with longer timeout (15 minutes = 900000ms)
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 900000); // 15 minutes
+    const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes
     
     try {
         const response = await fetch(apiUrl, {

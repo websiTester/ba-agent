@@ -329,22 +329,7 @@ The UI must include:
             .filter(key => !key.startsWith('_')) // Loại bỏ internal fields
             .map((key) => {
               
-              // --- CẤU HÌNH ĐỘC BIỆT CHO CỘT SECTION ---
-              // Cột Section được ghim bên trái và tự động sort để group các section lại
-              if (key.toLowerCase() === 'section') {
-                return {
-                  field: key,
-                  headerName: 'Section',
-                  pinned: 'left',      // Ghim chặt sang trái
-                  width: 180,          // Độ rộng cố định
-                  sort: 'asc',         // Tự động sắp xếp A-Z
-                  sortIndex: 0,        // Ưu tiên sort cột này trước
-                  editable: false,     // Không cho phép edit
-                };
-              }
-
-              // --- CẤU HÌNH CHO CÁC CỘT THÔNG THƯỜNG ---
-              const isIdCol = key.toLowerCase() === 'id';
+              
               const isLongText = key.toLowerCase().includes('description') || 
                                  key.toLowerCase().includes('rationale');
               //editable: !isIdCol

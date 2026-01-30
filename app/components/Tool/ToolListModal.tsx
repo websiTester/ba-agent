@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { X, Plus, Trash2, Edit2, Wrench, Settings, Loader2 } from 'lucide-react';
+import { X, Plus, Trash2, Edit2, Wrench, Settings, Loader2, Key, KeyRound } from 'lucide-react';
 import { useAppState } from '@/app/store';
 import ListTemplate from '../Sidebar/components/ListTemplate';
+import ApiKeyModal from './ApiKeyModal';
 
 /**
  * Mock data ban đầu cho danh sách tool
@@ -44,6 +45,9 @@ export default function ToolListModal({isLoadingTools,setSelectedTool, tools, se
   // State cho ListTemplate modal
   const [isListTemplateOpen, setIsListTemplateOpen] = useState(false);
   const [selectedToolForTemplate, setSelectedToolForTemplate] = useState<any>(null);
+  
+  // State cho ApiKeyModal
+  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
 
   // Xử lý khi bấm nút Add
   const handleAddTool = () => {
@@ -234,13 +238,22 @@ export default function ToolListModal({isLoadingTools,setSelectedTool, tools, se
 
           {/* Footer: Add Button */}
           <div className="px-6 py-4 border-t border-orange-100/50 bg-gradient-to-b from-white to-orange-50/20">
-            <button
-              onClick={handleAddTool}
-              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-orange-400 to-orange-500 hover:from-orange-500 hover:to-orange-600 text-white font-medium py-2.5 px-4 rounded-xl shadow-sm hover:shadow transition-all active:scale-[0.98]"
-            >
-              <Plus size={18} />
-              <span className="text-sm">Thêm công cụ mới</span>
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={handleAddTool}
+                className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-orange-400 to-orange-500 hover:from-orange-500 hover:to-orange-600 text-white font-medium py-2.5 px-4 rounded-xl shadow-sm hover:shadow transition-all active:scale-[0.98]"
+              >
+                <Plus size={18} />
+                <span className="text-sm">Thêm công cụ mới</span>
+              </button>
+              <button
+                onClick={() => setShowApiKeyModal(true)}
+                className="flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2.5 px-4 rounded-xl transition-all active:scale-[0.98]"
+                title="Cấu hình API Key"
+              >
+                <KeyRound size={18} />
+              </button>
+            </div>
             <p className="text-xs text-center text-gray-400 mt-2.5">
               Phase: <span className="font-medium text-orange-600">{phaseId}</span>
             </p>
@@ -260,6 +273,12 @@ export default function ToolListModal({isLoadingTools,setSelectedTool, tools, se
           agentSource={selectedToolForTemplate.toolName}
         />
       )}
+
+      {/* ApiKeyModal */}
+      <ApiKeyModal
+        isOpen={showApiKeyModal}
+        onClose={() => setShowApiKeyModal(false)}
+      />
     </>
   );
 };
