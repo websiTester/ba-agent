@@ -1,13 +1,12 @@
 import { createFile, deleteFile, getFilesByPhaseId } from "@/app/db/files";
 import { createMention, deleteMentionByFileId } from "@/app/db/tools";
-import { processDocument, deleteDocumentChunks, deleteChunksInChroma } from "@/app/mastra/rag-service";
 import { extractTextContent } from "@/app/utils/extractTextContent";
 import { formatFileSize } from "@/app/utils/formatFileSize";
 import { NextRequest, NextResponse } from "next/server";
 import dotenv from "dotenv";
 
 dotenv.config();
-const baseUrl = process.env.BASE_URL || "http://127.0.0.1:3001"
+const baseUrl = process.env.BASE_URL || "http://127.0.0.1:8000"
 const apiUrl = `${baseUrl}/rag/chunk_and_embedding`
 
 export async function GET(request: NextRequest) {
@@ -177,9 +176,7 @@ export async function DELETE(request: NextRequest) {
 
     // 1. Xóa document chunks từ vector database
     console.log(`[Delete] Removing chunks for file: ${fileId}`);
-    //await deleteDocumentChunks(fileId);
-    await deleteChunksInChroma(phaseId, fileName);
-
+    
     //Xóa mention cho file
     await deleteMentionByFileId(fileId);
 

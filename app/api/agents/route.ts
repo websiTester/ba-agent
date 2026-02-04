@@ -1,8 +1,4 @@
 import { getAgentByName, getAgents, updateAgentByName } from "@/app/db/agents";
-import { reloadAnalysisAgent } from "@/app/mastra/analysis-agent";
-import { reloadCommunicationAgent } from "@/app/mastra/communication-agent";
-import { reloadDiscoveryAgent } from "@/app/mastra/discovery-agent";
-import { reloadDocumentAgent } from "@/app/mastra/document-agent";
 import { NextRequest, NextResponse } from "next/server";
 import dotenv from "dotenv";
 
@@ -51,18 +47,6 @@ export async function PUT(request: NextRequest) {
     }
 
     await fetch(refreshUrl, {method: "PUT"})
-
-    // Reload agent để sử dụng instructions mới
-
-    if(agentName === "Discovery & Requirements Agent") {
-      await reloadDiscoveryAgent();
-    } else if(agentName === "Analysis & Validation Agent") {
-      await reloadAnalysisAgent();
-    } else if(agentName === "Documentation Agent") {
-      await reloadDocumentAgent();
-    } else if(agentName === "Communication & Handoff Agent") {
-      await reloadCommunicationAgent();
-    }
     
     return NextResponse.json({ success: true, message: "Agent updated successfully" });
   } catch (error) {

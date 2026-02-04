@@ -1,5 +1,3 @@
-import { uiAgent } from "@/app/mastra/agents/ui-agent";
-import { generateThreadId } from "@/app/mastra/analysis-agent";
 import { NextRequest, NextResponse } from "next/server";
 import dotenv from "dotenv";
 
@@ -87,7 +85,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
             success: true,
             response: data.message,
-            threadId: threadId || generateThreadId(),
+            threadId: threadId || "1",
         });
     } catch (error: any) {
         clearTimeout(timeoutId); // Clear timeout on error
