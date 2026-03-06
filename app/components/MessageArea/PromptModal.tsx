@@ -2,7 +2,7 @@
 import { PhaseId } from "@/app/models/types";
 import { useAppState } from "@/app/store";
 import { ChevronDown, Edit3, FileText, Save, Sparkles, Type, X } from "lucide-react";
-import { use, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 // Định nghĩa các mẫu Prompt có sẵn
 const PROMPT_TEMPLATES = [

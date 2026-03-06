@@ -6,6 +6,10 @@
 import { Send, Loader2, AlertCircle, X } from 'lucide-react';
 import { useState } from 'react';
 
+// Backend URL đọc từ env var (baked lúc docker build).
+// Giá trị mặc định: http://localhost:8000 (set trong Dockerfile ARG)
+const BACKEND_URL = process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:8000';
+
 interface RunAgentButtonProps {
   collapsed: boolean;
   isAgentProcessing: boolean;
@@ -22,7 +26,7 @@ export default function RunAgentButton({
   const handleClick = async () => {
     // Kiểm tra API key từ database
     try {
-      const response = await fetch('http://127.0.0.1:8000/apikeys/apikey', {
+      const response = await fetch(`${BACKEND_URL}/apikeys/apikey`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 import { PhaseId } from './models/types';
-import { Tool } from './models/tool';
 
 
 interface AppState{

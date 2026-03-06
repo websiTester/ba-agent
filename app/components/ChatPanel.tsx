@@ -1,11 +1,10 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 
 import { Message, PhaseId } from '../models/types';
 import SettingModel from './Setting/SettingModel';
 import MessageArea from './MessageArea/MessageArea';
-import InputArea from './InputArea/InputArea';
 import InputAreaMention from './InputAreaMention/InputAreaMention';
 
 
@@ -74,25 +73,6 @@ export default function ChatPanel({
 
   // Template Settings Modal State
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-    // Options Menu State
-  const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState(false);
-  const optionsMenuRef = useRef<HTMLDivElement>(null);
-
-  // Close options menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (optionsMenuRef.current && !optionsMenuRef.current.contains(event.target as Node)) {
-        setIsOptionsMenuOpen(false);
-      }
-    };
-
-    if (isOptionsMenuOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isOptionsMenuOpen]);
 
 
 

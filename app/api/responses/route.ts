@@ -65,3 +65,66 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+/**
+ * DELETE - Xóa AI response theo phaseId và agent_source
+ * 
+ * Query params:
+ * - phaseId: ID của phase
+ * - agentSource: Tên của agent source cần xóa
+ * 
+ * Returns:
+ * - success: boolean
+ * - message: string
+ */
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const phaseId = searchParams.get('phaseId');
+    const agentSource = searchParams.get('agentSource');
+
+    if (!phaseId || !agentSource) {
+      return NextResponse.json(
+        { error: "phaseId and agentSource are required" }, 
+        { status: 400 }
+      );
+    }
+
+    console.log(`[API] Deleting AI response for phase: ${phaseId}, agent_source: ${agentSource}`);
+
+    // Gọi API đến backend Python
+    const response = await fetch(
+      `${backendUrl}/agent_response/delete_response/${phaseId}/${agentSource}`,
+      {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Backend API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    console.log(`[API] ✅ Deleted response for phase: ${phaseId}, agent_source: ${agentSource}`);
+
+    return NextResponse.json({
+      success: true,
+      message: `Deleted response for ${agentSource}`,
+      ...data
+    });
+    
+  } catch (error) {
+    console.error("[API] Error deleting AI response:", error);
+    return NextResponse.json(
+      { 
+        success: false,
+        error: "Failed to delete AI response"
+      }, 
+      { status: 500 }
+    );
+  }
+}

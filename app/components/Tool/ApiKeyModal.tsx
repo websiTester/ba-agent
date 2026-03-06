@@ -3,6 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { X, Key, Eye, EyeOff, Save } from 'lucide-react';
 
+// Backend URL đọc từ env var (baked lúc docker build).
+// Giá trị mặc định: http://localhost:8000 (set trong Dockerfile ARG)
+const BACKEND_URL = process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:8000';
+
 interface ApiKeyModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -26,7 +30,7 @@ export default function ApiKeyModal({ isOpen, onClose }: ApiKeyModalProps) {
     setError('');
     
     try {
-      const response = await fetch('http://127.0.0.1:8000/apikeys/apikey', {
+      const response = await fetch(`${BACKEND_URL}/apikeys/apikey`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -58,7 +62,7 @@ export default function ApiKeyModal({ isOpen, onClose }: ApiKeyModalProps) {
     setError('');
     
     try {
-      const response = await fetch('http://127.0.0.1:8000/apikeys/apikey', {
+      const response = await fetch(`${BACKEND_URL}/apikeys/apikey`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

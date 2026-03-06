@@ -11,7 +11,6 @@ import { marked } from 'marked';
 import { asBlob } from 'html-docx-js-typescript';
 import { useEffect, useRef, useState } from "react";
 import Mermaid from "./Mermaid";
-import TableComponent from "./TableComponent";
 
 interface MessageAreaProb {
     messages: Message[],

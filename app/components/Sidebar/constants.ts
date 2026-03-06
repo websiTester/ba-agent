@@ -12,7 +12,7 @@ import { PhaseId } from '@/app/models/types';
 import { Phase } from './types';
 
 // API Configuration
-const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://127.0.0.1:3001";
+const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://127.0.0.1:8000";
 export const API_URL = `${baseUrl}/tools_management/get_tools`;
 
 // Timeout cho agent processing

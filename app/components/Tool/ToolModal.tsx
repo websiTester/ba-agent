@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { X, Save, Settings, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { X, Save, Loader2, AlertCircle, CheckCircle2, Settings } from 'lucide-react';
 import { useAppState } from '@/app/store';
 
 

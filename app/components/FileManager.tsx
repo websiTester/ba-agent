@@ -70,7 +70,6 @@ export default function FileManager({
 }: FileManagerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadStatus, setUploadStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [deletingFileId, setDeletingFileId] = useState<string | null>(null);
 
@@ -88,7 +87,7 @@ export default function FileManager({
       return;
     }
 
-    setIsUploading(true);
+    //setIsUploading(true);
     
     try {
       // Upload file lên server
@@ -136,7 +135,7 @@ export default function FileManager({
       setTimeout(() => setUploadStatus(null), 4000);
       throw error; // Re-throw để Modal có thể xử lý
     } finally {
-      setIsUploading(false);
+      //setIsUploading(false);
     }
   };
 

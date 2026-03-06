@@ -1,18 +1,14 @@
 'use client'
 import { useState, useEffect, useRef } from 'react';
-import { Sparkles, Download, Plus, SquareTerminal } from 'lucide-react';
+import { Sparkles, Download, Plus, SquareTerminal, Delete, Recycle, RecycleIcon, X, Trash2 } from 'lucide-react';
 import CsvTable from "./CsvTable";
 import PlantUMLCompoent from "./PlantUml/PlantUmlComponent";
 import RefineModal from './RefineModal';
 import ExportModal from './ExportModal';
+import DeleteConfirmModal from './DeleteConfirmModal';
 import { useAppState } from '@/app/store';
 import TabLoading from './TabLoading';
 import UseCaseTable from './Usecase/UseCaseTable';
-
-interface AIResponseRendererProb {
-    aiResponse: any
-}
-
 
 
 // Helper function to format agent_source name
@@ -23,10 +19,17 @@ const formatAgentSourceName = (agentSource: string) => {
         .join(' ');
 };
 
-export default function AIResponseRenderer({ handleAIResponse, aiResponse }: any) {
+interface AIResponseRendererProps {
+    handleAIResponse: (response: any) => void;
+    aiResponse: any;
+    onDeleteResponse?: (agentSource: string) => Promise<void>;
+}
+
+export default function AIResponseRenderer({ handleAIResponse, aiResponse, onDeleteResponse }: AIResponseRendererProps) {
     const [activeTab, setActiveTab] = useState(0);
     const [showRefineModal, setShowRefineModal] = useState(false);
     const [showExportModal, setShowExportModal] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
     const csvTableRef = useRef<any>(null);
     
     // Ensure aiResponse is an array
@@ -328,9 +331,6 @@ Based on the **List of UI Elements** provided below, please generate the full co
         }
     };
 
-    const handleUIRequirementPrompt = () => {
-
-    }
 
     return (
         <>
@@ -403,6 +403,15 @@ Based on the **List of UI Elements** provided below, please generate the full co
                             Export
                         </button>
                         )}
+                        {responses.length > 0 && onDeleteResponse && (
+                            <button
+                                onClick={() => setShowDeleteModal(true)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            >
+                                <Trash2 size={16} />
+                                Delete
+                            </button>
+                        )}
                         
                     </div>
                 </div>
@@ -452,6 +461,21 @@ Based on the **List of UI Elements** provided below, please generate the full co
                 availableTools={availableTools}
                 responses={responses}
                 onExport={handleExport}
+            />
+
+            <DeleteConfirmModal
+                isOpen={showDeleteModal}
+                onClose={() => setShowDeleteModal(false)}
+                agentSource={currentResponse?.agent_source || 'Unknown'}
+                onConfirm={async () => {
+                    if (onDeleteResponse && currentResponse?.agent_source) {
+                        await onDeleteResponse(currentResponse.agent_source);
+                        // Adjust activeTab if needed after deletion
+                        if (activeTab >= responses.length - 1 && activeTab > 0) {
+                            setActiveTab(activeTab - 1);
+                        }
+                    }
+                }}
             />
         </>
     );

@@ -1,15 +1,10 @@
 'use client';
 
-import { useState, useCallback, useEffect, useActionState } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Sidebar, { User } from './components/Sidebar';
-import ChatPanel from './components/ChatPanel';
-import FileManager from './components/FileManager';
 import { Message, FileItem, PhaseId } from './models/types';
 import { useAppState } from './store';
-import TableComponent from './components/MessageArea/TableComponent';
-import CsvTable from './components/MessageArea/CsvTable';
-import PlantUMLCompoent from './components/MessageArea/PlantUml/PlantUmlComponent';
 import AILoadingCard from './components/MessageArea/Loading';
 import AIResponseRenderer from './components/MessageArea/AIResponseRenderer';
 import { mergeData } from './utils/merge-response';
@@ -220,6 +215,41 @@ export default function Dashboard() {
 
   }, [activePhase]);
 
+  const handleDeleteResponse = useCallback(async (agentSource: string) => {
+    try {
+      const response = await fetch(
+        `/api/responses?phaseId=${activePhase}&agentSource=${encodeURIComponent(agentSource)}`,
+        { method: 'DELETE' }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to delete response');
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        // Remove deleted response from state
+        setPhaseData(prev => ({
+          ...prev,
+          [activePhase]: {
+            ...prev[activePhase],
+            aiResponse: prev[activePhase].aiResponse.filter(
+              (r: any) => r.agent_source !== agentSource
+            ),
+          }
+        }));
+        console.log(`✅ Deleted response for agent_source: ${agentSource}`);
+      } else {
+        throw new Error(result.error || 'Delete failed');
+      }
+    } catch (error) {
+      console.error('Error deleting response:', error);
+      alert('Lỗi khi xóa response. Vui lòng thử lại.');
+      throw error;
+    }
+  }, [activePhase]);
+
   const handleFileUpload = useCallback((file: FileItem) => {
     setPhaseData(prev => ({
       ...prev,
@@ -276,44 +306,6 @@ export default function Dashboard() {
         <div className="flex-1 flex overflow-hidden px-4 gap-4">
           {/* Chat Panel */}
           <div className="flex-1 min-w-0">
-            {/* OLD MESSAGE AREA */}
-            {/* <ChatPanel
-              phaseId={activePhase}
-              phaseName={currentPhase.name}
-              phaseDescription={currentPhase.description}
-              messages={currentData.messages}
-              onSendMessage={handleSendMessage}
-            /> */}
-
-            {/* {id:"123", name:"dasdasd", rationale:"sdasd",description:"dasdsad"} */}
-
-            {/* <TableComponent 
-            aiResponse = {currentData.aiResponse}
-            data={[{id:"123", name:"dasdasd", type:"functional", rationale:"sdasd",description:"dasdsad"}]} 
-            onAdd={onAddRequirement}
-            onDelete={onDeleteRequirement}
-            /> */}
-
-              {/* {
-                currentData.aiResponse && currentData.aiResponse.map((response: any) => (
-                  
-                  <AIResponseRenderer 
-                   aiResponse={response}
-                  />
-                ))
-              } */}
-
-            {/* {currentData.aiResponse ? (
-              currentData.aiResponse.agent_source === 'create_diagram' ? (
-                <PlantUMLCompoent aiResponse={currentData.aiResponse} />
-              ) : (
-                <div className="h-full">
-                  <CsvTable
-                    aiResponse={currentData.aiResponse}
-                  />
-                </div>
-              )
-            ) :  */}
             {
             // Hiển thị loading khi đang load data từ DB hoặc agent đang xử lý
             isLoadingData || isAgentProcessing ? (
@@ -341,24 +333,13 @@ export default function Dashboard() {
                   <AIResponseRenderer 
                    handleAIResponse={handleAIResponse}
                    aiResponse={currentData.aiResponse}
+                   onDeleteResponse={handleDeleteResponse}
                   />
                 )
               }
 
 
           </div>
-
-          {/* <div className={`flex-shrink-0 transition-all duration-300 ${fileManagerCollapsed ? 'w-12' : 'w-80'}`}>
-              <FileManager
-                files={currentData.files}
-                onUpload={handleFileUpload}
-                onDelete={handleFileDelete}
-                phaseName={currentPhase.name}
-                phaseId={activePhase}
-                collapsed={fileManagerCollapsed}
-                onToggleCollapse={() => setFileManagerCollapsed(!fileManagerCollapsed)}
-              />
-            </div> */}
         </div>
       </main>
 

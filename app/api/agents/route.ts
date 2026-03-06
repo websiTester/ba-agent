@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import dotenv from "dotenv";
 
 dotenv.config();
-const baseUrl = process.env.BASE_URL || "http://127.0.0.1:3001";
+const baseUrl = process.env.BASE_URL || "http://127.0.0.1:8000";
 const refreshUrl = `${baseUrl}/agent_response/refresh_agent`;
 
 // Get agent by name or get all agents

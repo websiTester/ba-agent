@@ -1,10 +1,7 @@
 'use   client';
 import { Template } from "@/app/models/types";
-import { isValidChatFileType } from "@/app/utils/isValidChatFileType";
-import { parseJson } from "@/app/utils/json-parser";
-import { readFileContent } from "@/app/utils/readFileContent";
-import { Bot, Loader2, Pencil, Plus, RefreshCw, Save, Settings, Trash2, Upload, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { X } from "lucide-react";
+import { useState } from "react";
 import SettingTab from "./SettingTab";
 import TemplateListTab from "./TemplateListTab";
 import TemplateDetailTab from "./TemplateDetailTab";
